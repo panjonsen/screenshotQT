@@ -49,39 +49,38 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event)
     qDebug() << "MainWindow mouse moved to:" << currentMousePos << "isSelecting:" << isSelecting << "activeHandle:" << activeHandle;
     if (isEditing && editWindow && editWindow->isVisible()) {
         qDebug() << "Ignoring move event due to EditWindow being active";
-        return; // 编辑窗口显示时，不处理鼠标移动
+        return;
     }
     if (isSelecting) {
         if (activeHandle == None) {
-            endPoint = event->pos(); // 普通选区
+            endPoint = event->pos();
         } else {
-            // 根据中点调整选区，固定对边或对角
             switch (activeHandle) {
             case TopLeft:
-                startPoint = event->pos(); // 固定 BottomRight
+                startPoint = event->pos();
                 break;
             case Top:
-                startPoint.setY(event->pos().y()); // 固定 Bottom
+                startPoint.setY(event->pos().y());
                 break;
             case TopRight:
-                startPoint.setY(event->pos().y()); // 固定 BottomLeft
+                startPoint.setY(event->pos().y());
                 endPoint.setX(event->pos().x());
                 break;
             case Right:
-                endPoint.setX(event->pos().x()); // 固定 Left
+                endPoint.setX(event->pos().x());
                 break;
             case BottomRight:
-                endPoint = event->pos(); // 固定 TopLeft
+                endPoint = event->pos();
                 break;
             case Bottom:
-                endPoint.setY(event->pos().y()); // 固定 Top
+                endPoint.setY(event->pos().y());
                 break;
             case BottomLeft:
-                startPoint.setX(event->pos().x()); // 固定 TopRight
+                startPoint.setX(event->pos().x());
                 endPoint.setY(event->pos().y());
                 break;
             case Left:
-                startPoint.setX(event->pos().x()); // 固定 Right
+                startPoint.setX(event->pos().x());
                 break;
             default:
                 break;
@@ -98,35 +97,35 @@ void MainWindow::mouseReleaseEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton && isSelecting) {
         if (activeHandle == None) {
-            endPoint = event->pos(); // 普通选区
+            endPoint = event->pos();
         } else {
             QPoint pos = event->pos();
             switch (activeHandle) {
             case TopLeft:
-                startPoint = pos; // 固定 BottomRight
+                startPoint = pos;
                 break;
             case Top:
-                startPoint.setY(pos.y()); // 固定 Bottom
+                startPoint.setY(pos.y());
                 break;
             case TopRight:
-                startPoint.setY(pos.y()); // 固定 BottomLeft
+                startPoint.setY(pos.y());
                 endPoint.setX(pos.x());
                 break;
             case Right:
-                endPoint.setX(pos.x()); // 固定 Left
+                endPoint.setX(pos.x());
                 break;
             case BottomRight:
-                endPoint = pos; // 固定 TopLeft
+                endPoint = pos;
                 break;
             case Bottom:
-                endPoint.setY(pos.y()); // 固定 Top
+                endPoint.setY(pos.y());
                 break;
             case BottomLeft:
-                startPoint.setX(pos.x()); // 固定 TopRight
+                startPoint.setX(pos.x());
                 endPoint.setY(pos.y());
                 break;
             case Left:
-                startPoint.setX(pos.x()); // 固定 Right
+                startPoint.setX(pos.x());
                 break;
             default:
                 break;
@@ -135,27 +134,29 @@ void MainWindow::mouseReleaseEvent(QMouseEvent *event)
         isSelecting = false;
         isEditing = true;
         activeHandle = None;
-        releaseMouse(); // 确保释放鼠标捕获
+        releaseMouse();
         qDebug() << "Entered editing state";
 
         QRect selection(startPoint, endPoint);
         selection = selection.normalized();
+        initialWidth = selection.width();
+        initialHeight = selection.height();
         QPixmap selectedPixmap = originalScreenshot.copy(selection);
         if (editWindow) {
             editWindow->updateScreenshot(selectedPixmap, selection.topLeft());
             editWindow->show();
-            editWindow->activateWindow(); // 设置为活动窗口
-            editWindow->setFocus();      // 赋予焦点
+            editWindow->activateWindow();
+            editWindow->setFocus();
         } else {
             editWindow = new EditWindow(selectedPixmap, selection.topLeft(), this);
             editWindow->show();
-            editWindow->activateWindow(); // 设置为活动窗口
-            editWindow->setFocus();      // 赋予焦点
+            editWindow->activateWindow();
+            editWindow->setFocus();
         }
         connect(editWindow, &EditWindow::handleDragged, this, &MainWindow::startDragging);
         connect(editWindow, &EditWindow::handleReleased, this, [this]() {
             if (isSelecting) {
-                releaseMouse(); // 释放鼠标捕获
+                releaseMouse();
                 isSelecting = false;
                 isEditing = true;
                 activeHandle = None;
@@ -165,8 +166,8 @@ void MainWindow::mouseReleaseEvent(QMouseEvent *event)
                 if (editWindow) {
                     editWindow->updateScreenshot(selectedPixmap, selection.topLeft());
                     editWindow->show();
-                    editWindow->activateWindow(); // 设置为活动窗口
-                    editWindow->setFocus();      // 赋予焦点
+                    editWindow->activateWindow();
+                    editWindow->setFocus();
                 }
                 update();
             }
@@ -199,11 +200,9 @@ void MainWindow::paintEvent(QPaintEvent *event)
 
         painter.setPen(Qt::red);
         painter.setFont(QFont("Arial", 14));
-        // 使用 normalized 后的左上角动态调整文本位置
         QPoint topLeft = selection.normalized().topLeft();
         QPoint textPos = topLeft;
         int margin = 5;
-        // 如果左上角靠近窗口边界，调整文本位置
         if (topLeft.x() < 20 || topLeft.y() < 20) {
             textPos = QPoint(topLeft.x() + margin, topLeft.y() + 20 + margin);
         } else {
@@ -233,44 +232,99 @@ void MainWindow::startDragging(Handle handle, const QPoint &globalPos)
 {
     if (!isSelecting) {
         if (editWindow) {
-            editWindow->hide(); // 隐藏编辑窗口
+            editWindow->hide();
         }
         isEditing = false;
         isSelecting = true;
         activeHandle = handle;
-        grabMouse(); // 抢占鼠标，确保 mouseMoveEvent 触发
+        grabMouse();
     }
     QPoint localPos = mapFromGlobal(globalPos);
-    if (activeHandle == Bottom) {
-        endPoint.setY(localPos.y()); // 只改变高度
-    } else {
-        switch (activeHandle) {
-        case TopLeft:
-            startPoint = localPos; // 固定 BottomRight
-            break;
-        case Top:
-            startPoint.setY(localPos.y()); // 固定 Bottom
-            break;
-        case TopRight:
-            startPoint.setY(localPos.y()); // 固定 BottomLeft
-            endPoint.setX(localPos.x());
-            break;
-        case Right:
-            endPoint.setX(localPos.x()); // 固定 Left
-            break;
-        case BottomRight:
-            endPoint = localPos; // 固定 TopLeft
-            break;
-        case BottomLeft:
-            startPoint.setX(localPos.x()); // 固定 TopRight
-            endPoint.setY(localPos.y());
-            break;
-        case Left:
-            startPoint.setX(localPos.x()); // 固定 Right
-            break;
-        default:
-            break;
-        }
+    QRect screenRect = screen()->geometry();
+
+    // 根据手柄类型调整选区，并限制在屏幕范围内
+    switch (activeHandle) {
+    case TopLeft:
+        startPoint = localPos;
+        if (startPoint.x() < 0) startPoint.setX(0);
+        if (startPoint.y() < 0) startPoint.setY(0);
+        if (startPoint.x() > endPoint.x()) startPoint.setX(endPoint.x());
+        if (startPoint.y() > endPoint.y()) startPoint.setY(endPoint.y());
+        break;
+    case Top:
+        startPoint.setY(localPos.y());
+        if (startPoint.y() < 0) startPoint.setY(0);
+        if (startPoint.y() > endPoint.y()) startPoint.setY(endPoint.y());
+        break;
+    case TopRight:
+        startPoint.setY(localPos.y());
+        endPoint.setX(localPos.x());
+        if (startPoint.y() < 0) startPoint.setY(0);
+        if (endPoint.x() > screenRect.width()) endPoint.setX(screenRect.width());
+        if (startPoint.y() > endPoint.y()) startPoint.setY(endPoint.y());
+        if (endPoint.x() < startPoint.x()) endPoint.setX(startPoint.x());
+        break;
+    case Right:
+        endPoint.setX(localPos.x());
+        if (endPoint.x() > screenRect.width()) endPoint.setX(screenRect.width());
+        if (endPoint.x() < startPoint.x()) endPoint.setX(startPoint.x());
+        break;
+    case BottomRight:
+        endPoint = localPos;
+        if (endPoint.x() > screenRect.width()) endPoint.setX(screenRect.width());
+        if (endPoint.y() > screenRect.height()) endPoint.setY(screenRect.height());
+        if (endPoint.x() < startPoint.x()) endPoint.setX(startPoint.x());
+        if (endPoint.y() < startPoint.y()) endPoint.setY(startPoint.y());
+        break;
+    case Bottom:
+        endPoint.setY(localPos.y());
+        if (endPoint.y() > screenRect.height()) endPoint.setY(screenRect.height());
+        if (endPoint.y() < startPoint.y()) endPoint.setY(startPoint.y());
+        break;
+    case BottomLeft:
+        startPoint.setX(localPos.x());
+        endPoint.setY(localPos.y());
+        if (startPoint.x() < 0) startPoint.setX(0);
+        if (endPoint.y() > screenRect.height()) endPoint.setY(screenRect.height());
+        if (startPoint.x() > endPoint.x()) startPoint.setX(endPoint.x());
+        if (endPoint.y() < startPoint.y()) endPoint.setY(startPoint.y());
+        break;
+    case Left:
+        startPoint.setX(localPos.x());
+        if (startPoint.x() < 0) startPoint.setX(0);
+        if (startPoint.x() > endPoint.x()) startPoint.setX(endPoint.x());
+        break;
+    default:
+        break;
     }
     update();
+}
+
+QPixmap MainWindow::updateSelectionPosition(const QPoint &newPos)
+{
+    startPoint = newPos;
+    endPoint = startPoint + QPoint(initialWidth, initialHeight);
+
+    QRect screenRect = screen()->geometry();
+    if (startPoint.x() < 0) {
+        startPoint.setX(0);
+        endPoint.setX(initialWidth);
+    }
+    if (startPoint.y() < 0) {
+        startPoint.setY(0);
+        endPoint.setY(initialHeight);
+    }
+    if (endPoint.x() > screenRect.width()) {
+        endPoint.setX(screenRect.width());
+        startPoint.setX(screenRect.width() - initialWidth);
+    }
+    if (endPoint.y() > screenRect.height()) {
+        endPoint.setY(screenRect.height());
+        startPoint.setY(screenRect.height() - initialHeight);
+    }
+
+    QRect newSelection(startPoint, endPoint);
+    QPixmap newScreenshot = originalScreenshot.copy(newSelection);
+    qDebug() << "New selection size:" << newSelection.width() << "x" << newSelection.height();
+    return newScreenshot;
 }

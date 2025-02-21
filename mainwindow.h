@@ -15,6 +15,7 @@ class MainWindow : public QMainWindow {
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+    QPixmap updateSelectionPosition(const QPoint &newPos);
 
 protected:
     void mousePressEvent(QMouseEvent *event) override;
@@ -35,6 +36,9 @@ private:
     EditWindow *editWindow = nullptr;
     QPoint currentMousePos;
     Handle activeHandle = None;
+    QPoint dragStartPos;
+    int initialWidth = 0;  // 记录初始选区宽度
+    int initialHeight = 0; // 记录初始选区高度
 
     void updateMagnifierPosition();
     void startDragging(Handle handle, const QPoint &globalPos);
