@@ -1,0 +1,9 @@
+F:/CppCode/ScreenshotTool/ScreenshotTool/build/Desktop_Qt_6_8_2_MinGW_64_bit-Release/CMakeFiles/ScreenshotTool.dir
+F:/CppCode/ScreenshotTool/ScreenshotTool/build/Desktop_Qt_6_8_2_MinGW_64_bit-Release/CMakeFiles/edit_cache.dir
+F:/CppCode/ScreenshotTool/ScreenshotTool/build/Desktop_Qt_6_8_2_MinGW_64_bit-Release/CMakeFiles/rebuild_cache.dir
+F:/CppCode/ScreenshotTool/ScreenshotTool/build/Desktop_Qt_6_8_2_MinGW_64_bit-Release/CMakeFiles/list_install_components.dir
+F:/CppCode/ScreenshotTool/ScreenshotTool/build/Desktop_Qt_6_8_2_MinGW_64_bit-Release/CMakeFiles/install.dir
+F:/CppCode/ScreenshotTool/ScreenshotTool/build/Desktop_Qt_6_8_2_MinGW_64_bit-Release/CMakeFiles/install/local.dir
+F:/CppCode/ScreenshotTool/ScreenshotTool/build/Desktop_Qt_6_8_2_MinGW_64_bit-Release/CMakeFiles/install/strip.dir
+F:/CppCode/ScreenshotTool/ScreenshotTool/build/Desktop_Qt_6_8_2_MinGW_64_bit-Release/CMakeFiles/ScreenshotTool_autogen_timestamp_deps.dir
+F:/CppCode/ScreenshotTool/ScreenshotTool/build/Desktop_Qt_6_8_2_MinGW_64_bit-Release/CMakeFiles/ScreenshotTool_autogen.dir

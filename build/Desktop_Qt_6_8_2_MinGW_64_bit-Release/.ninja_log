@@ -1,0 +1,11 @@
+# ninja log v6
+3	604	7618591165900828	ScreenshotTool_autogen/timestamp	471d241a5787ed6c
+3	604	7618591165900828	ScreenshotTool_autogen/mocs_compilation.cpp	471d241a5787ed6c
+3	604	7618591165900828	F:/CppCode/ScreenshotTool/ScreenshotTool/build/Desktop_Qt_6_8_2_MinGW_64_bit-Release/ScreenshotTool_autogen/timestamp	471d241a5787ed6c
+3	604	7618591165900828	F:/CppCode/ScreenshotTool/ScreenshotTool/build/Desktop_Qt_6_8_2_MinGW_64_bit-Release/ScreenshotTool_autogen/mocs_compilation.cpp	471d241a5787ed6c
+660	1589	7618591167162521	CMakeFiles/ScreenshotTool.dir/magnifierwindow.cpp.obj	9f5ab9ad52ea9907
+633	1590	7618591166893423	CMakeFiles/ScreenshotTool.dir/main.cpp.obj	ce3d33ff337fef5e
+620	1640	7618591166763850	CMakeFiles/ScreenshotTool.dir/ScreenshotTool_autogen/mocs_compilation.cpp.obj	78d494b723a43b9c
+674	1709	7618591167302056	CMakeFiles/ScreenshotTool.dir/editwindow.cpp.obj	6445a1f613e0434f
+646	1754	7618591167023029	CMakeFiles/ScreenshotTool.dir/mainwindow.cpp.obj	1bc050ece06bdfbf
+1754	1909	7618591178102474	ScreenshotTool.exe	391d6814d987b7ad
