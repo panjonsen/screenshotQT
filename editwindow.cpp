@@ -114,8 +114,7 @@ void EditWindow::updateScreenshot(const QPixmap &newScreenshot, const QPoint &ne
     move(newPos);
     updateCanvas();
     toolBar->adjustPosition();
-    // 移除 toolBar->show()，避免拖动过程中显示工具栏
-    update();
+    update(); // 触发重绘，确保尺寸更新
     qDebug() << "EditWindow: Screenshot updated, size:" << newScreenshot.size() << ", pos:" << newPos;
 }
 
@@ -125,6 +124,12 @@ void EditWindow::paintEvent(QPaintEvent *event)
     painter.setRenderHint(QPainter::Antialiasing);
     painter.drawPixmap(0, 0, canvas);
     painter.drawPixmap(0, 0, tempLayer);
+
+    // 显示当前选区尺寸
+    painter.setFont(QFont("Arial", 14));
+    painter.setPen(Qt::red); // 使用红色以突出显示
+    QString sizeText = QString("%1x%2").arg(width()).arg(height());
+    painter.drawText(10, 20, sizeText); // 左上角位置 (10, 20)
 
     if (mode == -1) {
         int dynamicHandleSize = calculateHandleSize();
@@ -139,8 +144,6 @@ void EditWindow::paintEvent(QPaintEvent *event)
 }
 
 
-
-
 void EditWindow::mousePressEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton) {
@@ -148,16 +151,24 @@ void EditWindow::mousePressEvent(QMouseEvent *event)
         int dynamicHandleSize = calculateHandleSize();
         MainWindow *mainWindow = qobject_cast<MainWindow*>(parent());
 
+        // 优先检查是否点击了绘制物
         selectedShape = hitTest(pos);
         if (selectedShape) {
             isDragging = true;
-            dragStartPos = pos;
-            selectedShape->offset = pos - selectedShape->rect.topLeft();
+            if (selectedShape->type == NumberedNote && selectedShape->bubbleRect.contains(pos)) {
+                dragStartPos = pos;
+                selectedShape->offset = pos - selectedShape->bubbleRect.topLeft();
+            } else {
+                dragStartPos = pos;
+                selectedShape->offset = pos - selectedShape->rect.topLeft();
+            }
             qDebug() << "EditWindow: Dragging shape at:" << pos << ", mode:" << mode;
-            return;
+            return; // 点击绘制物后直接返回
         }
 
+        // 小手模式下的中点调整和选区拖动逻辑
         if (mode == -1) {
+            bool hitHandle = false;
             for (int i = 0; i < 8; ++i) {
                 Handle handle = static_cast<Handle>(i + 1);
                 QRect handleRect = getHandleRect(handle);
@@ -171,19 +182,26 @@ void EditWindow::mousePressEvent(QMouseEvent *event)
                     toolBar->hide();
                     qDebug() << "EditWindow: Handle pressed:" << activeHandle << "at:" << pos;
                     emit handleDragged(activeHandle, dragStartPos);
-                    return;
+                    hitHandle = true;
+                    break;
                 }
             }
 
-            if (isDragMode) {
+            // 只有未点击中点且不在调整状态时，才允许选区拖动
+            if (!hitHandle && isDragMode && !isAdjustingHandle) {
                 dragStartPos = event->globalPosition().toPoint();
                 isDraggingSelection = true;
                 toolBar->hide();
                 qDebug() << "EditWindow: Start dragging selection at:" << dragStartPos;
                 return;
             }
+
+            if (hitHandle) {
+                return; // 点击中点后直接返回
+            }
         }
 
+        // 绘制模式的逻辑
         if (mode >= 0 && !isAdjustingHandle && !isDragging && !isDraggingSelection && activeHandle == None &&
             mainWindow && !mainWindow->isAdjustingSelectionState()) {
             startPoint = pos;
@@ -211,27 +229,25 @@ void EditWindow::mousePressEvent(QMouseEvent *event)
                     Shape shape;
                     shape.type = NumberedNote;
                     QFont font("Arial", fontSize);
-                    QString numberedText = QString("%1. %2").arg(noteNumber).arg(text); // 格式化序号和文本
-                    QRect textRect = QFontMetrics(font).boundingRect(QRect(0, 0, width() - pos.x(), height() - pos.y()), Qt::AlignLeft | Qt::TextWordWrap, numberedText);
-                    shape.rect = QRect(pos, QSize(32, 32)); // 固定正方形大小为 32x32
+                    QString numberedText = QString("%1. %2").arg(noteNumber).arg(text);
+                    shape.rect = QRect(pos, QSize(32, 32));
                     shape.text = numberedText;
                     shape.color = textColor;
                     shape.width = fontSize;
-                    shape.number = noteNumber; // 记录序号
-                    shape.bubbleColor = QColor(200, 200, 200, 128); // 半透明灰色背景（RGBA: 200,200,200,128 约 50% 透明）
-                    shape.bubbleBorderColor = Qt::black; // 气泡边框颜色（黑色）
+                    shape.number = noteNumber;
+                    shape.bubbleColor = QColor(200, 200, 200, 128);
+                    shape.bubbleBorderColor = Qt::black;
 
-                    // 计算气泡框的尺寸和位置，增加与正方形的间距
                     QFontMetrics fm(font);
-                    QString contentText = text; // 仅使用实际输入的文本内容
-                    int textWidth = fm.horizontalAdvance(contentText) + 20; // 增加边距
-                    int textHeight = fm.height() * (contentText.count('\n') + 1) + 10; // 考虑多行
-                    int bubbleX = pos.x() + 34 + 10; // 增加 10 像素的间距，紧邻正方形右侧
-                    int bubbleY = pos.y() - (textHeight - 32) / 2; // 垂直居中于正方形
+                    QString contentText = text;
+                    int textWidth = fm.horizontalAdvance(contentText) + 20;
+                    int textHeight = fm.height() * (contentText.count('\n') + 1) + 10;
+                    int bubbleX = pos.x() + 34 + 5;
+                    int bubbleY = pos.y() - (textHeight - 32) / 2;
                     shape.bubbleRect = QRect(bubbleX, bubbleY, textWidth, textHeight);
 
                     shapes.append(shape);
-                    noteNumber++; // 递增序号
+                    noteNumber++;
                     updateCanvas();
                     update();
                     isDrawing = false;
@@ -251,6 +267,7 @@ void EditWindow::mousePressEvent(QMouseEvent *event)
 }
 
 
+
 void EditWindow::mouseMoveEvent(QMouseEvent *event)
 {
     QPoint pos = event->pos();
@@ -267,20 +284,47 @@ void EditWindow::mouseMoveEvent(QMouseEvent *event)
 
         MainWindow *mainWindow = qobject_cast<MainWindow*>(parent());
         if (mainWindow) {
+            QSize originalSize = size(); // 记录拖动前的尺寸
             QPixmap newScreenshot = mainWindow->updateSelectionPosition(newPos);
             updateScreenshot(newScreenshot, newPos);
+            setFixedSize(originalSize); // 强制保持原始尺寸
         }
 
         dragStartPos = event->globalPosition().toPoint();
-        qDebug() << "EditWindow: Dragging selection to:" << newPos;
+        qDebug() << "EditWindow: Dragging selection to:" << newPos << ", size:" << size();
     } else if (activeHandle != None && (event->buttons() & Qt::LeftButton)) {
         emit handleDragged(activeHandle, event->globalPosition().toPoint());
     } else if (isDragging && (event->buttons() & Qt::LeftButton) && selectedShape) {
-        QPoint newTopLeft = pos - selectedShape->offset;
-        selectedShape->rect.moveTo(newTopLeft);
+        QPoint offset = pos - dragStartPos;
+        QPoint oldRectTopLeft = selectedShape->rect.topLeft();
+        QPoint oldBubbleTopLeft = selectedShape->bubbleRect.topLeft();
+        QPoint newRectTopLeft = oldRectTopLeft + offset;
+
+        if (selectedShape->type == NumberedNote && !selectedShape->bubbleRect.isNull()) {
+            QRect combinedRect = selectedShape->rect | selectedShape->bubbleRect;
+            int combinedWidth = combinedRect.width();
+            int combinedHeight = combinedRect.height();
+            QPoint newCombinedTopLeft = newRectTopLeft - (selectedShape->rect.topLeft() - combinedRect.topLeft());
+            newCombinedTopLeft.setX(qBound(0, newCombinedTopLeft.x(), width() - combinedWidth));
+            newCombinedTopLeft.setY(qBound(0, newCombinedTopLeft.y(), height() - combinedHeight));
+            QPoint rectOffset = selectedShape->rect.topLeft() - combinedRect.topLeft();
+            selectedShape->rect.moveTo(newCombinedTopLeft + rectOffset);
+            QPoint bubbleOffset = oldBubbleTopLeft - oldRectTopLeft;
+            selectedShape->bubbleRect.moveTo(selectedShape->rect.topLeft() + bubbleOffset);
+        } else {
+            int rectWidth = selectedShape->rect.width();
+            int rectHeight = selectedShape->rect.height();
+            int borderAdjustment = (selectedShape->type == Rectangle || selectedShape->type == Ellipse) ? shapeBorderWidth : 0;
+            int halfBorder = borderAdjustment / 2;
+            newRectTopLeft.setX(qBound(halfBorder, newRectTopLeft.x(), width() - rectWidth - halfBorder));
+            newRectTopLeft.setY(qBound(halfBorder, newRectTopLeft.y(), height() - rectHeight - halfBorder));
+            selectedShape->rect.moveTo(newRectTopLeft);
+        }
+
+        dragStartPos = pos;
         updateCanvas();
         update();
-        qDebug() << "EditWindow: Moving shape to:" << newTopLeft;
+        qDebug() << "EditWindow: Moving shape with offset:" << offset << ", new rect pos:" << selectedShape->rect.topLeft();
     } else if (mode >= 0 && (event->buttons() & Qt::LeftButton) && isDrawing) {
         QPainter painter(&tempLayer);
         painter.setRenderHint(QPainter::Antialiasing);
@@ -306,21 +350,17 @@ void EditWindow::mouseMoveEvent(QMouseEvent *event)
             update();
         } else if ((mode == 3 || mode == 4) && !shapes.isEmpty() && (shapes.last().type == Pen || shapes.last().type == Mask)) {
             if (mode == 3 && (QApplication::keyboardModifiers() & Qt::ShiftModifier)) {
-                // 画笔模式按住 Shift 键绘制直线
                 QPoint delta = pos - startPoint;
                 QPoint adjustedEnd;
                 if (qAbs(delta.x()) > qAbs(delta.y())) {
-                    // 水平直线
                     adjustedEnd = QPoint(pos.x(), startPoint.y());
                 } else {
-                    // 垂直直线
                     adjustedEnd = QPoint(startPoint.x(), pos.y());
                 }
-                shapes.last().points.clear(); // 清空当前路径，只保留直线
+                shapes.last().points.clear();
                 shapes.last().points.append(startPoint);
                 shapes.last().points.append(adjustedEnd);
             } else {
-                // 正常画笔或马赛克
                 shapes.last().points.append(pos);
             }
             painter.setPen(QPen(shapes.last().color, shapes.last().width, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
@@ -340,12 +380,43 @@ void EditWindow::mouseMoveEvent(QMouseEvent *event)
     } else {
         QCursor cursor;
         Shape *hoveredShape = hitTest(pos);
+        int hitBorderWidth = 10;
         if (hoveredShape) {
             cursor = Qt::SizeAllCursor;
         } else if (mode == 0 || mode == 1 || mode == 3) {
             cursor = Qt::ArrowCursor;
         } else if (mode == -1 && isDragMode) {
             cursor = Qt::OpenHandCursor;
+            int dynamicHandleSize = calculateHandleSize();
+            for (int i = 0; i < 8; ++i) {
+                Handle handle = static_cast<Handle>(i + 1);
+                QRect handleRect = getHandleRect(handle);
+                handleRect.setSize(QSize(dynamicHandleSize, dynamicHandleSize));
+                handleRect.moveCenter(getHandleRect(handle).center());
+                if (handleRect.contains(pos)) {
+                    switch (handle) {
+                    case TopLeft:
+                    case BottomRight:
+                        cursor = Qt::SizeFDiagCursor;
+                        break;
+                    case TopRight:
+                    case BottomLeft:
+                        cursor = Qt::SizeBDiagCursor;
+                        break;
+                    case Top:
+                    case Bottom:
+                        cursor = Qt::SizeVerCursor;
+                        break;
+                    case Left:
+                    case Right:
+                        cursor = Qt::SizeHorCursor;
+                        break;
+                    default:
+                        break;
+                    }
+                    break;
+                }
+            }
         } else if (mode == 4) {
             QPixmap cursorPixmap(mosaicSize, mosaicSize);
             cursorPixmap.fill(Qt::transparent);
@@ -357,44 +428,10 @@ void EditWindow::mouseMoveEvent(QMouseEvent *event)
             cursor = QCursor(cursorPixmap);
         } else {
             cursor = Qt::ArrowCursor;
-            if (mode == -1) {
-                int dynamicHandleSize = calculateHandleSize();
-                for (int i = 0; i < 8; ++i) {
-                    Handle handle = static_cast<Handle>(i + 1);
-                    QRect handleRect = getHandleRect(handle);
-                    handleRect.setSize(QSize(dynamicHandleSize, dynamicHandleSize));
-                    handleRect.moveCenter(getHandleRect(handle).center());
-                    if (handleRect.contains(pos)) {
-                        switch (handle) {
-                        case TopLeft:
-                        case BottomRight:
-                            cursor = Qt::SizeFDiagCursor;
-                            break;
-                        case TopRight:
-                        case BottomLeft:
-                            cursor = Qt::SizeBDiagCursor;
-                            break;
-                        case Top:
-                        case Bottom:
-                            cursor = Qt::SizeVerCursor;
-                            break;
-                        case Left:
-                        case Right:
-                            cursor = Qt::SizeHorCursor;
-                            break;
-                        default:
-                            break;
-                        }
-                        break;
-                    }
-                }
-            }
         }
         setCursor(cursor);
     }
 }
-
-
 
 void EditWindow::mouseReleaseEvent(QMouseEvent *event)
 {
@@ -407,12 +444,14 @@ void EditWindow::mouseReleaseEvent(QMouseEvent *event)
             emit handleReleased();
             activeHandle = None;
             isAdjustingHandle = false;
+            isAdjustingFromEditMode = false; // 重置中点调整标志
             isDrawing = false;
             isDragging = false;
             MainWindow *mainWindow = qobject_cast<MainWindow*>(parent());
             if (mainWindow) {
-                mainWindow->resetSelectionState();
+                mainWindow->resetSelectionState(); // 确保 MainWindow 状态同步
             }
+            toolBar->show();
             qDebug() << "EditWindow: Handle released, all states reset";
             update();
         } else if (isDragging) {
@@ -426,7 +465,6 @@ void EditWindow::mouseReleaseEvent(QMouseEvent *event)
                 Shape shape;
                 shape.type = (mode == 0) ? Rectangle : Ellipse;
                 if (mode == 1 && (QApplication::keyboardModifiers() & Qt::ShiftModifier)) {
-                    // 按住 Shift 键时保持正圆
                     int size = qMin(qAbs(event->pos().x() - startPoint.x()), qAbs(event->pos().y() - startPoint.y()));
                     QPoint adjustedEnd = startPoint + QPoint(event->pos().x() > startPoint.x() ? size : -size,
                                                              event->pos().y() > startPoint.y() ? size : -size);
@@ -453,6 +491,52 @@ void EditWindow::mouseReleaseEvent(QMouseEvent *event)
         }
     }
 }
+
+
+
+
+void EditWindow::mouseDoubleClickEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton) {
+        QPoint pos = event->pos();
+        Shape *shape = hitTest(pos);
+        if (shape && (shape->type == Text || shape->type == NumberedNote)) {
+            QString currentText = shape->type == Text ? shape->text : shape->text.mid(shape->text.indexOf(". ") + 2);
+            QString newText = QInputDialog::getMultiLineText(this,
+                                                             shape->type == Text ? "编辑文本" : "编辑序号笔记",
+                                                             "请输入新文本:",
+                                                             currentText);
+            if (!newText.isEmpty()) {
+                if (shape->type == Text) {
+                    // 更新文本形状
+                    shape->text = newText;
+                    QFont font("Arial", shape->width);
+                    QFontMetrics fm(font);
+                    QRect textRect = fm.boundingRect(QRect(0, 0, width() - shape->rect.x(), height() - shape->rect.y()),
+                                                     Qt::AlignLeft | Qt::TextWordWrap, newText);
+                    shape->rect.setSize(textRect.size());
+                } else if (shape->type == NumberedNote) {
+                    // 更新序号笔记，只修改笔记内容
+                    shape->text = QString("%1. %2").arg(shape->number).arg(newText);
+                    QFont font("Arial", shape->width);
+                    QFontMetrics fm(font);
+                    QString contentText = newText;
+                    int textWidth = fm.horizontalAdvance(contentText) + 20;
+                    int textHeight = fm.height() * (contentText.count('\n') + 1) + 10;
+                    int bubbleX = shape->rect.x() + 34 + 5;
+                    int bubbleY = shape->rect.y() - (textHeight - 32) / 2;
+                    shape->bubbleRect = QRect(bubbleX, bubbleY, textWidth, textHeight);
+                }
+                updateCanvas();
+                update();
+            }
+        }
+    }
+}
+
+
+
+
 
 
 
@@ -486,55 +570,40 @@ void EditWindow::drawShape(QPainter &painter, const Shape &shape)
         painter.setFont(QFont("Arial", shape.width));
         painter.setPen(shape.color);
         painter.drawText(shape.rect, Qt::AlignLeft | Qt::TextWordWrap, shape.text);
-    } else if (shape.type == NumberedNote) { // 绘制序号笔记
-        painter.setFont(QFont("Arial", shape.width));
-
-        // 绘制 32x32 像素的正方形部分（序号）
-        int boxSize = 32; // 固定大小为 32x32 像素
-        QPoint topLeft = shape.rect.topLeft(); // 基于 shape.rect 的左上角位置
-
-        // 绘制 32x32 像素的矩形边框（黑色）
-        painter.setPen(Qt::black);
-        painter.setBrush(Qt::NoBrush); // 空填充，绘制边框
-        painter.drawRect(topLeft.x(), topLeft.y(), boxSize, boxSize);
-
-        // 绘制 32x32 像素的红色实心圆，中心点为矩形中心（16,16）
+    } else if (shape.type == NumberedNote) {
+        // 绘制序号部分（固定大小）
+        int fixedFontSize = 16; // 序号固定字体大小
+        painter.setFont(QFont("Arial", fixedFontSize));
+        int boxSize = 32; // 固定正方形大小
+        QPoint topLeft = shape.rect.topLeft();
         painter.setBrush(Qt::red);
-        painter.setPen(Qt::NoPen); // 无边框
-        QPoint center = topLeft + QPoint(boxSize / 2, boxSize / 2); // 矩形中心（16,16）
-        painter.drawEllipse(center, boxSize / 2, boxSize / 2); // 直径为 32 像素的圆，完全填充矩形
-
-        // 绘制白色数字，在矩形中心点（16,16）水平垂直居中（数字中点与中心对齐）
-        int number = shape.number;
-        QString numberText = QString::number(number);
-        QFontMetrics fm(QFont("Arial", shape.width));
-        int numberWidth = fm.horizontalAdvance(numberText);
-        int textHeight = fm.height();
+        painter.setPen(Qt::NoPen);
+        QPoint center = topLeft + QPoint(boxSize / 2, boxSize / 2);
+        painter.drawEllipse(center, boxSize / 2, boxSize / 2);
+        QFontMetrics fmSeq(QFont("Arial", fixedFontSize));
+        QString numberText = QString::number(shape.number);
+        int numberWidth = fmSeq.horizontalAdvance(numberText);
+        int textHeight = fmSeq.height();
         painter.setPen(Qt::white);
-        int verticalOffset = textHeight / 2; // 数字的垂直中点偏移
-        int back = verticalOffset;
-        verticalOffset -= back;
-        verticalOffset -= back;
-        verticalOffset = verticalOffset / 2; // 最终 verticalOffset = -textHeight / 4
-        QPoint textPos = center - QPoint(numberWidth / 2, verticalOffset); // 水平垂直居中（以中点为基准）
+        int verticalOffset = textHeight / 4; // 调整垂直居中
+        QPoint textPos = center - QPoint(numberWidth / 2, -verticalOffset);
         painter.drawText(textPos, numberText);
 
-        // 绘制气泡框和笔记内容
+        // 绘制气泡框和笔记内容（动态大小）
         if (!shape.bubbleRect.isNull()) {
-            // 绘制圆角矩形气泡框
-            painter.setBrush(shape.bubbleColor); // 半透明灰色背景（RGBA: 200,200,200,128）
-            painter.setPen(QPen(shape.bubbleBorderColor, 1)); // 气泡边框颜色（黑色），宽度 1
+            painter.setBrush(shape.bubbleColor);
+            painter.setPen(QPen(shape.bubbleBorderColor, 1));
             QPainterPath path;
-            int radius = 5; // 圆角半径
+            int radius = 5;
             path.addRoundedRect(shape.bubbleRect, radius, radius);
             painter.drawPath(path);
 
-            // 绘制笔记内容（文本），在气泡框内居中
+            // 只绘制笔记内容，使用动态 fontSize
+            painter.setFont(QFont("Arial", shape.width));
             painter.setPen(shape.color);
             QString contentText = shape.text.mid(shape.text.indexOf(". ") + 2); // 移除 "n. " 部分
             painter.drawText(shape.bubbleRect, Qt::AlignCenter | Qt::TextWordWrap, contentText);
         }
-
     } else if (shape.type == Pen || shape.type == Mask) {
         painter.setPen(QPen(shape.color, shape.width, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
         painter.setBrush(Qt::NoBrush);
@@ -543,7 +612,6 @@ void EditWindow::drawShape(QPainter &painter, const Shape &shape)
         }
     }
 }
-
 
 void EditWindow::updateCanvas()
 {
@@ -559,21 +627,26 @@ void EditWindow::updateCanvas()
     canvasPainter.drawPixmap(0, 0, drawingLayer);
 }
 
+
 Shape* EditWindow::hitTest(const QPoint &pos)
 {
     int dynamicHandleSize = calculateHandleSize();
+    int hitBorderWidth = 10; // 隐式加宽触发区域，从 5 增加到 10
     for (int i = shapes.size() - 1; i >= 0; --i) {
         Shape &shape = shapes[i];
         if (shape.type == Rectangle) {
-            if (isOnBorder(shape.rect, pos, dynamicHandleSize / 2)) {
+            if (isOnBorder(shape.rect, pos, hitBorderWidth)) {
                 return &shape;
             }
         } else if (shape.type == Ellipse) {
-            if (isOnEllipseBorder(shape.rect, pos, shape.width)) {
+            if (isOnEllipseBorder(shape.rect, pos, hitBorderWidth)) {
                 return &shape;
             }
         } else if (shape.type == Text || shape.type == NumberedNote) {
-            if (shape.rect.contains(pos) || (shape.type == NumberedNote && shape.bubbleRect.contains(pos))) {
+            if (shape.rect.contains(pos)) {
+                return &shape;
+            }
+            if (!shape.bubbleRect.isNull() && shape.bubbleRect.contains(pos)) {
                 return &shape;
             }
         }
@@ -581,12 +654,15 @@ Shape* EditWindow::hitTest(const QPoint &pos)
     return nullptr;
 }
 
+
+
 bool EditWindow::isOnBorder(const QRect &rect, const QPoint &pos, int borderWidth)
 {
     QRect outerRect = rect.adjusted(-borderWidth, -borderWidth, borderWidth, borderWidth);
     QRect innerRect = rect.adjusted(borderWidth, borderWidth, -borderWidth, -borderWidth);
     return outerRect.contains(pos) && !innerRect.contains(pos);
 }
+
 
 bool EditWindow::isOnEllipseBorder(const QRect &rect, const QPoint &pos, int borderWidth)
 {
@@ -598,9 +674,10 @@ bool EditWindow::isOnEllipseBorder(const QRect &rect, const QPoint &pos, int bor
     double y = pos.y() - centerY;
 
     double value = (x * x) / (a * a) + (y * y) / (b * b);
-    double tolerance = borderWidth / a;
+    double tolerance = borderWidth / a; // 根据宽度调整容差
     return std::abs(value - 1.0) <= tolerance;
 }
+
 
 int EditWindow::calculateHandleSize() const
 {

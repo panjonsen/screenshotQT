@@ -102,6 +102,8 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event)
     }
 }
 
+
+
 void MainWindow::mouseReleaseEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton && (isSelectingInitial || isAdjustingSelection)) {
@@ -141,11 +143,11 @@ void MainWindow::mouseReleaseEvent(QMouseEvent *event)
             }
         }
         isSelectingInitial = false;
-        isAdjustingSelection = false;
+        isAdjustingSelection = false; // 确保调整状态结束
         isEditing = true;
         activeHandle = None;
         releaseMouse();
-        qDebug() << "MainWindow: Entered editing state";
+        qDebug() << "MainWindow: Entered editing state after adjustment";
 
         QRect selection(startPoint, endPoint);
         selection = selection.normalized();
@@ -157,9 +159,9 @@ void MainWindow::mouseReleaseEvent(QMouseEvent *event)
             editWindow->show();
             editWindow->activateWindow();
             editWindow->setFocus();
-            // 检查是否从编辑模式触发中点调节
             if (editWindow->getIsAdjustingFromEditMode()) {
-                editWindow->showToolBar(); // 中点调节完成后显示工具栏
+                editWindow->showToolBar();
+                editWindow->setMode(-1); // 强制重置为小手模式
                 qDebug() << "MainWindow: Adjusting from edit mode completed, toolbar shown";
             }
         } else {
@@ -185,6 +187,8 @@ void MainWindow::mouseReleaseEvent(QMouseEvent *event)
         update();
     }
 }
+
+
 
 void MainWindow::paintEvent(QPaintEvent *event)
 {
@@ -311,6 +315,7 @@ void MainWindow::startDragging(Handle handle, const QPoint &globalPos)
 
 QPixmap MainWindow::updateSelectionPosition(const QPoint &newPos)
 {
+    // 使用初始宽度和高度，确保尺寸不变
     startPoint = newPos;
     endPoint = startPoint + QPoint(initialWidth, initialHeight);
 
@@ -338,6 +343,7 @@ QPixmap MainWindow::updateSelectionPosition(const QPoint &newPos)
     return newScreenshot;
 }
 
+
 QRect MainWindow::getSelection() const
 {
     return QRect(startPoint, endPoint).normalized();
@@ -346,12 +352,12 @@ QRect MainWindow::getSelection() const
 void MainWindow::resetSelectionState()
 {
     isSelectingInitial = false;
-    isAdjustingSelection = false;
+    isAdjustingSelection = false; // 确保调整状态彻底清理
     activeHandle = None;
     isEditing = true;
     releaseMouse();
     if (editWindow) {
-        editWindow->setMode(-1);
+        editWindow->setMode(-1); // 同步 EditWindow 模式
         QRect selection(startPoint, endPoint);
         selection = selection.normalized();
         QPixmap newScreenshot = originalScreenshot.copy(selection);
@@ -360,9 +366,13 @@ void MainWindow::resetSelectionState()
         editWindow->activateWindow();
         editWindow->setFocus();
     }
-    qDebug() << "MainWindow: Selection state reset, isSelectingInitial:" << isSelectingInitial << ", isAdjustingSelection:" << isAdjustingSelection << ", isEditing:" << isEditing << ", activeHandle:" << activeHandle;
+    qDebug() << "MainWindow: Selection state reset, isSelectingInitial:" << isSelectingInitial
+             << ", isAdjustingSelection:" << isAdjustingSelection
+             << ", isEditing:" << isEditing
+             << ", activeHandle:" << activeHandle;
     update();
 }
+
 
 bool MainWindow::isSelectingInitialState() const
 {
