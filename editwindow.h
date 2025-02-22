@@ -18,7 +18,10 @@ public:
     ~EditWindow();
     void updateScreenshot(const QPixmap &newScreenshot, const QPoint &newPos);
     QPixmap getCanvas() const { return canvas; }
-    void setMode(int newMode); // 允许 MainWindow 重置 mode
+    void setMode(int newMode);
+    void hideToolBar();
+    bool getIsAdjustingFromEditMode() const { return isAdjustingFromEditMode; }
+    void showToolBar();
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -29,6 +32,7 @@ protected:
 signals:
     void handleDragged(Handle handle, const QPoint &globalPos);
     void handleReleased();
+    void finished(const QPixmap &pixmap);
 
 private:
     QPixmap screenshot;
@@ -44,9 +48,10 @@ private:
     bool isDragging = false;
     bool isDragMode = true;
     bool isDraggingSelection = false;
-    bool isAdjustingHandle = false; // 中点调整状态
-    bool isDrawing = false;         // 绘制状态
-    int mode = -1; // -1:无, 0:矩形, 1:圆形, 2:文本, 3:画笔, 4:遮罩
+    bool isAdjustingHandle = false;
+    bool isDrawing = false;
+    bool isAdjustingFromEditMode = false;
+    int mode = -1; // -1:无, 0:矩形, 1:圆形, 2:文本, 3:画笔, 4:遮罩, 5:序号笔记
     QList<Shape> shapes;
     Shape *selectedShape = nullptr;
     QPoint startPoint;
@@ -59,6 +64,7 @@ private:
     QColor penColor = Qt::black;
     ToolBarWindow *toolBar;
     QRect currentRect;
+    int noteNumber = 1; // 跟踪序号，初始为 1
 
     QRect getHandleRect(Handle handle) const;
     void drawShape(QPainter &painter, const Shape &shape);

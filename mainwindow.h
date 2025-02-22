@@ -18,8 +18,8 @@ public:
     QPixmap updateSelectionPosition(const QPoint &newPos);
     QRect getSelection() const;
     void resetSelectionState();
-    bool isSelectingInitialState() const; // 初始选区状态
-    bool isAdjustingSelection() const;    // 中点调整选区状态
+    bool isSelectingInitialState() const; // 检查是否处于初始选区状态
+    bool isAdjustingSelectionState() const; // 修改函数名，避免与变量冲突
 
 protected:
     void mousePressEvent(QMouseEvent *event) override;
@@ -31,8 +31,8 @@ private:
     QPixmap screenshot;
     QPixmap originalScreenshot;
     QPoint startPoint, endPoint;
-    bool isSelectingInitial = false;      // 初始选区状态
-    bool isAdjustingSelectionState = false; // 中点调整选区状态（改为新变量名）
+    bool isSelectingInitial = false; // 初始选区状态
+    bool isAdjustingSelection = false; // 中点调整状态
     bool isEditing = false;
     int borderWidth = 2;
     QColor borderColor = Qt::red;

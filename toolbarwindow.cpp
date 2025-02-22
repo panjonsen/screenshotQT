@@ -10,7 +10,7 @@ ToolBarWindow::ToolBarWindow(EditWindow *editWindow, QWidget *parent)
     : QWidget(parent), editWindow(editWindow)
 {
     setWindowFlags(Qt::Tool | Qt::FramelessWindowHint);
-    setFixedWidth(350);
+    setFixedWidth(400);
     setupUI();
     adjustPosition();
     adjustHeight();
@@ -27,14 +27,28 @@ void ToolBarWindow::setupUI()
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
     QHBoxLayout *buttonLayout = new QHBoxLayout();
 
+    // 更新 buttonStyle，添加 color 属性
     QString buttonStyle = "QPushButton { "
                           "border: 1px solid #A0A0A0; "
                           "border-radius: 5px; "
                           "background-color: #FFFFFF; "
                           "font-size: 14px; "
-                          "padding: 2px; }"
+                          "padding: 2px; "
+                          "color: #000000; }" // 添加黑色文字
                           "QPushButton:hover { background-color: #E0E0E0; }"
                           "QPushButton:pressed { background-color: #D0D0D0; }";
+
+    // 定义滑块样式表
+    QString sliderStyle = "QSlider::groove:horizontal { "
+                          "background: #D0D0D0; "
+                          "height: 6px; "
+                          "border-radius: 3px; }"
+                          "QSlider::handle:horizontal { "
+                          "background: #FFFFFF; "
+                          "border: 1px solid #A0A0A0; "
+                          "width: 12px; "
+                          "margin: -3px 0; "
+                          "border-radius: 6px; }";
 
     rectButton = new QPushButton(this);
     rectButton->setFixedSize(30, 30);
@@ -86,6 +100,17 @@ void ToolBarWindow::setupUI()
         adjustHeight();
     });
 
+
+    numberNoteButton = new QPushButton("N", this); // 序号笔记按钮
+    numberNoteButton->setFixedSize(30, 30);
+    numberNoteButton->setStyleSheet(buttonStyle);
+    connect(numberNoteButton, &QPushButton::clicked, [this]() {
+        setActiveButton(numberNoteButton);
+        emit modeChanged(5); // 触发序号笔记模式
+        hide(); textSettings->show(); mosaicSettings->hide(); shapeSettings->hide(); penSettings->hide(); show();
+        adjustHeight();
+    });
+
     dragButton = new QPushButton("手", this);
     dragButton->setFixedSize(30, 30);
     dragButton->setStyleSheet(buttonStyle);
@@ -112,11 +137,14 @@ void ToolBarWindow::setupUI()
     cancelButton->setStyleSheet(buttonStyle);
     connect(cancelButton, &QPushButton::clicked, this, &ToolBarWindow::cancelRequested);
 
+
+
     buttonLayout->addWidget(rectButton);
     buttonLayout->addWidget(circleButton);
     buttonLayout->addWidget(textButton);
     buttonLayout->addWidget(penButton);
     buttonLayout->addWidget(mosaicButton);
+    buttonLayout->addWidget(numberNoteButton); // 添加序号笔记按钮
     buttonLayout->addWidget(dragButton);
     buttonLayout->addWidget(undoButton);
     buttonLayout->addWidget(finishButton);
@@ -125,17 +153,22 @@ void ToolBarWindow::setupUI()
 
     textSettings = new QWidget(this);
     QHBoxLayout *textLayout = new QHBoxLayout(textSettings);
-    fontSizeSpinBox = new QSpinBox(this);
-    fontSizeSpinBox->setRange(8, 72);
-    fontSizeSpinBox->setValue(16);
+    fontSizeSlider = new QSlider(Qt::Horizontal, this); // 替换 QSpinBox 为 QSlider
+    fontSizeSlider->setRange(8, 72); // 与原 QSpinBox 范围一致
+    fontSizeSlider->setValue(16);    // 默认值 16
+    fontSizeSlider->setTickPosition(QSlider::TicksBelow);
+    fontSizeSlider->setTickInterval(8);
+    fontSizeSlider->setSingleStep(1);
+    fontSizeSlider->setPageStep(8);
+    fontSizeSlider->setStyleSheet(sliderStyle); // 应用滑块样式
     colorBlock = new QPushButton(this);
     colorBlock->setFixedSize(20, 20);
     textColor = Qt::black;
     colorBlock->setStyleSheet("QPushButton { background-color: black; border: 1px solid black; border-radius: 3px; }");
-    textLayout->addWidget(fontSizeSpinBox);
+    textLayout->addWidget(fontSizeSlider);
     textLayout->addWidget(colorBlock);
     textSettings->hide();
-    connect(fontSizeSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), this, &ToolBarWindow::textFontSizeChanged);
+    connect(fontSizeSlider, &QSlider::valueChanged, this, &ToolBarWindow::textFontSizeChanged); // 替换信号连接
     connect(colorBlock, &QPushButton::clicked, [this]() {
         QColor color = QColorDialog::getColor(textColor, this);
         if (color.isValid()) {
@@ -144,6 +177,8 @@ void ToolBarWindow::setupUI()
             emit textColorChanged(color);
         }
     });
+
+
 
     mosaicSettings = new QWidget(this);
     QHBoxLayout *mosaicLayout = new QHBoxLayout(mosaicSettings);
@@ -154,6 +189,7 @@ void ToolBarWindow::setupUI()
     mosaicSizeSlider->setTickInterval(5);
     mosaicSizeSlider->setSingleStep(1);
     mosaicSizeSlider->setPageStep(5);
+    mosaicSizeSlider->setStyleSheet(sliderStyle); // 应用样式
     mosaicLayout->addWidget(mosaicSizeSlider);
     mosaicSettings->hide();
     connect(mosaicSizeSlider, &QSlider::valueChanged, this, &ToolBarWindow::mosaicSizeChanged);
@@ -167,6 +203,7 @@ void ToolBarWindow::setupUI()
     borderWidthSlider->setTickInterval(1);
     borderWidthSlider->setSingleStep(1);
     borderWidthSlider->setPageStep(1);
+    borderWidthSlider->setStyleSheet(sliderStyle); // 应用样式
     borderColorBlock = new QPushButton(this);
     borderColorBlock->setFixedSize(20, 20);
     borderColorBlock->setStyleSheet("QPushButton { background-color: black; border: 1px solid black; border-radius: 3px; }");
@@ -191,6 +228,7 @@ void ToolBarWindow::setupUI()
     penWidthSlider->setTickInterval(1);
     penWidthSlider->setSingleStep(1);
     penWidthSlider->setPageStep(1);
+    penWidthSlider->setStyleSheet(sliderStyle); // 应用样式
     penColorBlock = new QPushButton(this);
     penColorBlock->setFixedSize(20, 20);
     penColorBlock->setStyleSheet("QPushButton { background-color: black; border: 1px solid black; border-radius: 3px; }");
@@ -218,38 +256,38 @@ void ToolBarWindow::setupUI()
 
 void ToolBarWindow::setActiveButton(QPushButton *button)
 {
-    rectButton->setStyleSheet("QPushButton { border: 1px solid #A0A0A0; border-radius: 5px; background-color: #FFFFFF; font-size: 14px; padding: 2px; }"
+    rectButton->setStyleSheet("QPushButton { border: 1px solid #A0A0A0; border-radius: 5px; background-color: #FFFFFF; font-size: 14px; padding: 2px; color: #000000; }"
                               "QPushButton:hover { background-color: #E0E0E0; }"
                               "QPushButton:pressed { background-color: #D0D0D0; }"
                               "QPushButton { border: 2px solid black; }");
-    circleButton->setStyleSheet("QPushButton { border: 1px solid #A0A0A0; border-radius: 5px; background-color: #FFFFFF; font-size: 14px; padding: 2px; }"
+    circleButton->setStyleSheet("QPushButton { border: 1px solid #A0A0A0; border-radius: 5px; background-color: #FFFFFF; font-size: 14px; padding: 2px; color: #000000; }"
                                 "QPushButton:hover { background-color: #E0E0E0; }"
                                 "QPushButton:pressed { background-color: #D0D0D0; }"
                                 "QPushButton { border: 2px solid black; border-radius: 15px; }");
-    textButton->setStyleSheet("QPushButton { border: 1px solid #A0A0A0; border-radius: 5px; background-color: #FFFFFF; font-size: 14px; padding: 2px; }"
+    textButton->setStyleSheet("QPushButton { border: 1px solid #A0A0A0; border-radius: 5px; background-color: #FFFFFF; font-size: 14px; padding: 2px; color: #000000; }"
                               "QPushButton:hover { background-color: #E0E0E0; }"
                               "QPushButton:pressed { background-color: #D0D0D0; }");
-    penButton->setStyleSheet("QPushButton { border: 1px solid #A0A0A0; border-radius: 5px; background-color: #FFFFFF; font-size: 14px; padding: 2px; }"
+    penButton->setStyleSheet("QPushButton { border: 1px solid #A0A0A0; border-radius: 5px; background-color: #FFFFFF; font-size: 14px; padding: 2px; color: #000000; }"
                              "QPushButton:hover { background-color: #E0E0E0; }"
                              "QPushButton:pressed { background-color: #D0D0D0; }");
-    mosaicButton->setStyleSheet("QPushButton { border: 1px solid #A0A0A0; border-radius: 5px; background-color: #FFFFFF; font-size: 14px; padding: 2px; }"
+    mosaicButton->setStyleSheet("QPushButton { border: 1px solid #A0A0A0; border-radius: 5px; background-color: #FFFFFF; font-size: 14px; padding: 2px; color: #000000; }"
                                 "QPushButton:hover { background-color: #E0E0E0; }"
                                 "QPushButton:pressed { background-color: #D0D0D0; }");
-    dragButton->setStyleSheet("QPushButton { border: 1px solid #A0A0A0; border-radius: 5px; background-color: #FFFFFF; font-size: 14px; padding: 2px; }"
+    dragButton->setStyleSheet("QPushButton { border: 1px solid #A0A0A0; border-radius: 5px; background-color: #FFFFFF; font-size: 14px; padding: 2px; color: #000000; }"
                               "QPushButton:hover { background-color: #E0E0E0; }"
                               "QPushButton:pressed { background-color: #D0D0D0; }");
-    undoButton->setStyleSheet("QPushButton { border: 1px solid #A0A0A0; border-radius: 5px; background-color: #FFFFFF; font-size: 14px; padding: 2px; }"
+    undoButton->setStyleSheet("QPushButton { border: 1px solid #A0A0A0; border-radius: 5px; background-color: #FFFFFF; font-size: 14px; padding: 2px; color: #000000; }"
                               "QPushButton:hover { background-color: #E0E0E0; }"
                               "QPushButton:pressed { background-color: #D0D0D0; }");
-    finishButton->setStyleSheet("QPushButton { border: 1px solid #A0A0A0; border-radius: 5px; background-color: #FFFFFF; font-size: 14px; padding: 2px; }"
+    finishButton->setStyleSheet("QPushButton { border: 1px solid #A0A0A0; border-radius: 5px; background-color: #FFFFFF; font-size: 14px; padding: 2px; color: #000000; }"
                                 "QPushButton:hover { background-color: #E0E0E0; }"
                                 "QPushButton:pressed { background-color: #D0D0D0; }");
-    cancelButton->setStyleSheet("QPushButton { border: 1px solid #A0A0A0; border-radius: 5px; background-color: #FFFFFF; font-size: 14px; padding: 2px; }"
+    cancelButton->setStyleSheet("QPushButton { border: 1px solid #A0A0A0; border-radius: 5px; background-color: #FFFFFF; font-size: 14px; padding: 2px; color: #000000; }"
                                 "QPushButton:hover { background-color: #E0E0E0; }"
                                 "QPushButton:pressed { background-color: #D0D0D0; }");
 
     if (button) {
-        button->setStyleSheet(button->styleSheet() + "QPushButton { background-color: #87CEEB; }");
+        button->setStyleSheet(button->styleSheet() + "QPushButton { background-color: #87CEEB; color: #000000; }"); // 确保高亮时文字可见
     }
 }
 
@@ -287,6 +325,7 @@ void ToolBarWindow::adjustHeight()
     else if (shapeSettings->isVisible()) settingsHeight = 40;
     else if (penSettings->isVisible()) settingsHeight = 40;
     setFixedHeight(baseHeight + settingsHeight);
+    adjustPosition(); // 每次高度变化后调整位置
 }
 
 void ToolBarWindow::paintEvent(QPaintEvent *event)

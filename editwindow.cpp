@@ -8,7 +8,9 @@
 #include <QApplication>
 #include <QClipboard>
 #include <cmath>
-
+#include <QTimer>
+#include <QThread>
+#include <QPainterPath> // æ·»åŠ æ­¤è¡Œ
 EditWindow::EditWindow(const QPixmap &screenshot, const QPoint &pos, QWidget *parent)
     : QWidget(parent), screenshot(screenshot), canvas(screenshot), drawingLayer(screenshot.size()), tempLayer(screenshot.size())
 {
@@ -22,8 +24,7 @@ EditWindow::EditWindow(const QPixmap &screenshot, const QPoint &pos, QWidget *pa
     toolBar = new ToolBarWindow(this, this);
     toolBar->show();
 
-    // Ä¬ÈÏÄ£Ê½ÒÑÔÚ ToolBarWindow ¹¹Ôìº¯ÊıÖĞÉèÖÃ£¬ÎŞĞèÔÚ´Ë´¦ÉèÖÃ dragButton
-    mode = -1; // È·±£³õÊ¼Ä£Ê½ÎªĞ¡ÊÖÄ£Ê½
+    mode = -1;
     isDragMode = true;
 
     connect(toolBar, &ToolBarWindow::modeChanged, this, [this](int m) {
@@ -40,13 +41,42 @@ EditWindow::EditWindow(const QPixmap &screenshot, const QPoint &pos, QWidget *pa
             update();
         }
     });
+
     connect(toolBar, &ToolBarWindow::finishRequested, this, [this]() {
+        if (QThread::currentThread() != QCoreApplication::instance()->thread()) {
+            qDebug() << "ä¸åœ¨ä¸»çº¿ç¨‹ä¸­ï¼";
+            return;
+        }
         QClipboard *clipboard = QApplication::clipboard();
-        clipboard->setPixmap(canvas);
-        hide();
-        toolBar->hide();
-        QCoreApplication::quit();
+        bool settingPixmap = true;
+
+        connect(clipboard, &QClipboard::dataChanged, this, [this, clipboard, settingPixmap]() {
+            if (settingPixmap) {
+                QPixmap pixmap = clipboard->pixmap();
+                if (!pixmap.isNull() && pixmap.size() == canvas.size()) {
+                    qDebug() << "11";
+                    QTimer::singleShot(100, qApp, &QApplication::quit);
+                } else {
+                    qDebug() << "22";
+                }
+            } else {
+                if (clipboard->text() == "Hello, world!") {
+                    qDebug() << "01";
+                } else {
+                    qDebug() << "02";
+                }
+            }
+            disconnect(clipboard, &QClipboard::dataChanged, this, nullptr);
+        });
+
+        if (settingPixmap) {
+            QImage image = canvas.toImage();
+            clipboard->setImage(image);
+        } else {
+            clipboard->setText("Hello, world!");
+        }
     });
+
     connect(toolBar, &ToolBarWindow::cancelRequested, this, []() {
         QCoreApplication::quit();
     });
@@ -60,7 +90,6 @@ EditWindow::EditWindow(const QPixmap &screenshot, const QPoint &pos, QWidget *pa
     show();
 }
 
-// ÆäÓà²¿·Ö±£³Ö²»±ä£¬ÒÔÏÂ½öÁĞ³ö¹¹Ôìº¯ÊıĞŞ¸ÄºóµÄÄÚÈİ£¬ÍêÕû´úÂëÇë²Î¿¼Ç°´ÎÌá½»
 EditWindow::~EditWindow()
 {
     delete toolBar;
@@ -85,6 +114,7 @@ void EditWindow::updateScreenshot(const QPixmap &newScreenshot, const QPoint &ne
     move(newPos);
     updateCanvas();
     toolBar->adjustPosition();
+    // ç§»é™¤ toolBar->show()ï¼Œé¿å…æ‹–åŠ¨è¿‡ç¨‹ä¸­æ˜¾ç¤ºå·¥å…·æ 
     update();
     qDebug() << "EditWindow: Screenshot updated, size:" << newScreenshot.size() << ", pos:" << newPos;
 }
@@ -96,7 +126,6 @@ void EditWindow::paintEvent(QPaintEvent *event)
     painter.drawPixmap(0, 0, canvas);
     painter.drawPixmap(0, 0, tempLayer);
 
-    // Ö»ÓĞÔÚĞ¡ÊÖÄ£Ê½£¨mode == -1£©ÏÂÏÔÊ¾ÖĞµã
     if (mode == -1) {
         int dynamicHandleSize = calculateHandleSize();
         for (int i = 0; i < 8; ++i) {
@@ -109,6 +138,9 @@ void EditWindow::paintEvent(QPaintEvent *event)
     }
 }
 
+
+
+
 void EditWindow::mousePressEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton) {
@@ -116,9 +148,16 @@ void EditWindow::mousePressEvent(QMouseEvent *event)
         int dynamicHandleSize = calculateHandleSize();
         MainWindow *mainWindow = qobject_cast<MainWindow*>(parent());
 
-        // ¼ì²éÊÇ·ñÔÚÍÏ×§Ä£Ê½ÏÂÒÆ¶¯Õû¸öÑ¡Çø»òµ÷ÕûÖĞµã
+        selectedShape = hitTest(pos);
+        if (selectedShape) {
+            isDragging = true;
+            dragStartPos = pos;
+            selectedShape->offset = pos - selectedShape->rect.topLeft();
+            qDebug() << "EditWindow: Dragging shape at:" << pos << ", mode:" << mode;
+            return;
+        }
+
         if (mode == -1) {
-            // ¼ì²éÖĞµãµã»÷
             for (int i = 0; i < 8; ++i) {
                 Handle handle = static_cast<Handle>(i + 1);
                 QRect handleRect = getHandleRect(handle);
@@ -127,65 +166,85 @@ void EditWindow::mousePressEvent(QMouseEvent *event)
                 if (handleRect.contains(pos)) {
                     activeHandle = handle;
                     isAdjustingHandle = true;
+                    isAdjustingFromEditMode = true;
                     dragStartPos = event->globalPosition().toPoint();
+                    toolBar->hide();
                     qDebug() << "EditWindow: Handle pressed:" << activeHandle << "at:" << pos;
                     emit handleDragged(activeHandle, dragStartPos);
                     return;
                 }
             }
 
-            // ¼ì²éÍÏ¶¯Õû¸öÑ¡Çø
             if (isDragMode) {
                 dragStartPos = event->globalPosition().toPoint();
                 isDraggingSelection = true;
+                toolBar->hide();
                 qDebug() << "EditWindow: Start dragging selection at:" << dragStartPos;
-                return;
-            }
-
-            // ¼ì²éÍÏ¶¯ÒÑÓĞĞÎ×´
-            selectedShape = hitTest(pos);
-            if (selectedShape) {
-                isDragging = true;
-                dragStartPos = pos;
-                selectedShape->offset = pos - selectedShape->rect.topLeft();
-                qDebug() << "EditWindow: Dragging shape at:" << pos;
                 return;
             }
         }
 
-        // »æÖÆĞÂĞÎ×´£¬½öÔÚ»æÖÆÄ£Ê½ÏÂ´¥·¢
         if (mode >= 0 && !isAdjustingHandle && !isDragging && !isDraggingSelection && activeHandle == None &&
-            mainWindow && !mainWindow->isAdjustingSelection()) {
-            if (!hitTest(pos)) { // È·±£²»ÔÚÏÖÓĞĞÎ×´ÉÏ
-                startPoint = pos;
-                isDrawing = true;
-                qDebug() << "EditWindow: Start drawing at:" << pos << ", mode:" << mode;
-                if (mode == 2) {
-                    QString text = QInputDialog::getMultiLineText(this, "ÊäÈëÎÄ±¾", "ÇëÊäÈëÎÄ±¾:");
-                    if (!text.isEmpty()) {
-                        Shape shape;
-                        shape.type = Text;
-                        QFont font("Arial", fontSize);
-                        QRect textRect = QFontMetrics(font).boundingRect(QRect(0, 0, width() - pos.x(), height() - pos.y()), Qt::AlignLeft | Qt::TextWordWrap, text);
-                        shape.rect = QRect(pos, textRect.size());
-                        shape.text = text;
-                        shape.color = textColor;
-                        shape.width = fontSize;
-                        shapes.append(shape);
-                        updateCanvas();
-                        update();
-                        isDrawing = false;
-                    }
-                } else if (mode == 3 || mode == 4) { // »­±Ê»òÂíÈü¿Ë
+            mainWindow && !mainWindow->isAdjustingSelectionState()) {
+            startPoint = pos;
+            isDrawing = true;
+            qDebug() << "EditWindow: Start drawing at:" << pos << ", mode:" << mode;
+            if (mode == 2) { // æ–‡æœ¬æ¨¡å¼
+                QString text = QInputDialog::getMultiLineText(this, "è¾“å…¥æ–‡æœ¬", "è¯·è¾“å…¥æ–‡æœ¬:");
+                if (!text.isEmpty()) {
                     Shape shape;
-                    shape.type = (mode == 3) ? Pen : Mask;
-                    shape.points.append(pos);
-                    shape.color = (mode == 3) ? penColor : Qt::gray;
-                    shape.width = (mode == 3) ? penWidth : mosaicSize;
+                    shape.type = Text;
+                    QFont font("Arial", fontSize);
+                    QRect textRect = QFontMetrics(font).boundingRect(QRect(0, 0, width() - pos.x(), height() - pos.y()), Qt::AlignLeft | Qt::TextWordWrap, text);
+                    shape.rect = QRect(pos, textRect.size());
+                    shape.text = text;
+                    shape.color = textColor;
+                    shape.width = fontSize;
                     shapes.append(shape);
                     updateCanvas();
                     update();
+                    isDrawing = false;
                 }
+            } else if (mode == 5) { // åºå·ç¬”è®°æ¨¡å¼
+                QString text = QInputDialog::getMultiLineText(this, "è¾“å…¥åºå·ç¬”è®°", "è¯·è¾“å…¥ç¬”è®°å†…å®¹:");
+                if (!text.isEmpty()) {
+                    Shape shape;
+                    shape.type = NumberedNote;
+                    QFont font("Arial", fontSize);
+                    QString numberedText = QString("%1. %2").arg(noteNumber).arg(text); // æ ¼å¼åŒ–åºå·å’Œæ–‡æœ¬
+                    QRect textRect = QFontMetrics(font).boundingRect(QRect(0, 0, width() - pos.x(), height() - pos.y()), Qt::AlignLeft | Qt::TextWordWrap, numberedText);
+                    shape.rect = QRect(pos, QSize(32, 32)); // å›ºå®šæ­£æ–¹å½¢å¤§å°ä¸º 32x32
+                    shape.text = numberedText;
+                    shape.color = textColor;
+                    shape.width = fontSize;
+                    shape.number = noteNumber; // è®°å½•åºå·
+                    shape.bubbleColor = QColor(200, 200, 200, 128); // åŠé€æ˜ç°è‰²èƒŒæ™¯ï¼ˆRGBA: 200,200,200,128 çº¦ 50% é€æ˜ï¼‰
+                    shape.bubbleBorderColor = Qt::black; // æ°”æ³¡è¾¹æ¡†é¢œè‰²ï¼ˆé»‘è‰²ï¼‰
+
+                    // è®¡ç®—æ°”æ³¡æ¡†çš„å°ºå¯¸å’Œä½ç½®ï¼Œå¢åŠ ä¸æ­£æ–¹å½¢çš„é—´è·
+                    QFontMetrics fm(font);
+                    QString contentText = text; // ä»…ä½¿ç”¨å®é™…è¾“å…¥çš„æ–‡æœ¬å†…å®¹
+                    int textWidth = fm.horizontalAdvance(contentText) + 20; // å¢åŠ è¾¹è·
+                    int textHeight = fm.height() * (contentText.count('\n') + 1) + 10; // è€ƒè™‘å¤šè¡Œ
+                    int bubbleX = pos.x() + 34 + 10; // å¢åŠ  10 åƒç´ çš„é—´è·ï¼Œç´§é‚»æ­£æ–¹å½¢å³ä¾§
+                    int bubbleY = pos.y() - (textHeight - 32) / 2; // å‚ç›´å±…ä¸­äºæ­£æ–¹å½¢
+                    shape.bubbleRect = QRect(bubbleX, bubbleY, textWidth, textHeight);
+
+                    shapes.append(shape);
+                    noteNumber++; // é€’å¢åºå·
+                    updateCanvas();
+                    update();
+                    isDrawing = false;
+                }
+            } else if (mode == 3 || mode == 4) {
+                Shape shape;
+                shape.type = (mode == 3) ? Pen : Mask;
+                shape.points.append(pos);
+                shape.color = (mode == 3) ? penColor : Qt::gray;
+                shape.width = (mode == 3) ? penWidth : mosaicSize;
+                shapes.append(shape);
+                updateCanvas();
+                update();
             }
         }
     }
@@ -195,7 +254,6 @@ void EditWindow::mousePressEvent(QMouseEvent *event)
 void EditWindow::mouseMoveEvent(QMouseEvent *event)
 {
     QPoint pos = event->pos();
-    qDebug() << "EditWindow: Mouse moved to:" << pos << ", isDrawing:" << isDrawing << ", isAdjustingHandle:" << isAdjustingHandle;
 
     if (isDraggingSelection && (event->buttons() & Qt::LeftButton)) {
         QPoint globalOffset = event->globalPosition().toPoint() - dragStartPos;
@@ -222,6 +280,7 @@ void EditWindow::mouseMoveEvent(QMouseEvent *event)
         selectedShape->rect.moveTo(newTopLeft);
         updateCanvas();
         update();
+        qDebug() << "EditWindow: Moving shape to:" << newTopLeft;
     } else if (mode >= 0 && (event->buttons() & Qt::LeftButton) && isDrawing) {
         QPainter painter(&tempLayer);
         painter.setRenderHint(QPainter::Antialiasing);
@@ -246,14 +305,31 @@ void EditWindow::mouseMoveEvent(QMouseEvent *event)
             painter.drawEllipse(currentRect);
             update();
         } else if ((mode == 3 || mode == 4) && !shapes.isEmpty() && (shapes.last().type == Pen || shapes.last().type == Mask)) {
-            shapes.last().points.append(pos);
+            if (mode == 3 && (QApplication::keyboardModifiers() & Qt::ShiftModifier)) {
+                // ç”»ç¬”æ¨¡å¼æŒ‰ä½ Shift é”®ç»˜åˆ¶ç›´çº¿
+                QPoint delta = pos - startPoint;
+                QPoint adjustedEnd;
+                if (qAbs(delta.x()) > qAbs(delta.y())) {
+                    // æ°´å¹³ç›´çº¿
+                    adjustedEnd = QPoint(pos.x(), startPoint.y());
+                } else {
+                    // å‚ç›´ç›´çº¿
+                    adjustedEnd = QPoint(startPoint.x(), pos.y());
+                }
+                shapes.last().points.clear(); // æ¸…ç©ºå½“å‰è·¯å¾„ï¼Œåªä¿ç•™ç›´çº¿
+                shapes.last().points.append(startPoint);
+                shapes.last().points.append(adjustedEnd);
+            } else {
+                // æ­£å¸¸ç”»ç¬”æˆ–é©¬èµ›å…‹
+                shapes.last().points.append(pos);
+            }
             painter.setPen(QPen(shapes.last().color, shapes.last().width, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
             painter.setBrush(Qt::NoBrush);
-            if (mode == 3) { // »­±Ê£º»æÖÆÁ¬ĞøÏß¶Î
+            if (mode == 3) {
                 for (int i = 1; i < shapes.last().points.size(); ++i) {
                     painter.drawLine(shapes.last().points[i - 1], shapes.last().points[i]);
                 }
-            } else if (mode == 4) { // ÂíÈü¿Ë£º»æÖÆ´ÖÏßÄ£ÄâÁ¬ĞøÂíÈü¿ËĞ§¹û
+            } else if (mode == 4) {
                 painter.setPen(QPen(shapes.last().color, shapes.last().width, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
                 for (int i = 1; i < shapes.last().points.size(); ++i) {
                     painter.drawLine(shapes.last().points[i - 1], shapes.last().points[i]);
@@ -262,7 +338,6 @@ void EditWindow::mouseMoveEvent(QMouseEvent *event)
             update();
         }
     } else {
-        // ¹â±êÂß¼­±£³Ö²»±ä
         QCursor cursor;
         Shape *hoveredShape = hitTest(pos);
         if (hoveredShape) {
@@ -281,7 +356,7 @@ void EditWindow::mouseMoveEvent(QMouseEvent *event)
             cursorPainter.drawEllipse(0, 0, mosaicSize, mosaicSize);
             cursor = QCursor(cursorPixmap);
         } else {
-            cursor = Qt::OpenHandCursor;
+            cursor = Qt::ArrowCursor;
             if (mode == -1) {
                 int dynamicHandleSize = calculateHandleSize();
                 for (int i = 0; i < 8; ++i) {
@@ -321,19 +396,13 @@ void EditWindow::mouseMoveEvent(QMouseEvent *event)
 
 
 
-
-
-
-
-
-
-
 void EditWindow::mouseReleaseEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton) {
         if (isDraggingSelection) {
             isDraggingSelection = false;
-            qDebug() << "EditWindow: Stop dragging selection";
+            toolBar->show();
+            qDebug() << "EditWindow: Stop dragging selection, toolbar shown";
         } else if (activeHandle != None) {
             emit handleReleased();
             activeHandle = None;
@@ -348,13 +417,23 @@ void EditWindow::mouseReleaseEvent(QMouseEvent *event)
             update();
         } else if (isDragging) {
             isDragging = false;
+            selectedShape = nullptr;
             updateCanvas();
             update();
+            qDebug() << "EditWindow: Shape dragging stopped";
         } else if ((mode == 0 || mode == 1) && isDrawing) {
             if (startPoint != event->pos()) {
                 Shape shape;
                 shape.type = (mode == 0) ? Rectangle : Ellipse;
-                shape.rect = QRect(startPoint, event->pos()).normalized();
+                if (mode == 1 && (QApplication::keyboardModifiers() & Qt::ShiftModifier)) {
+                    // æŒ‰ä½ Shift é”®æ—¶ä¿æŒæ­£åœ†
+                    int size = qMin(qAbs(event->pos().x() - startPoint.x()), qAbs(event->pos().y() - startPoint.y()));
+                    QPoint adjustedEnd = startPoint + QPoint(event->pos().x() > startPoint.x() ? size : -size,
+                                                             event->pos().y() > startPoint.y() ? size : -size);
+                    shape.rect = QRect(startPoint, adjustedEnd).normalized();
+                } else {
+                    shape.rect = QRect(startPoint, event->pos()).normalized();
+                }
                 shape.width = shapeBorderWidth;
                 shape.color = shapeBorderColor;
                 shapes.append(shape);
@@ -375,6 +454,8 @@ void EditWindow::mouseReleaseEvent(QMouseEvent *event)
     }
 }
 
+
+
 QRect EditWindow::getHandleRect(Handle handle) const
 {
     int dynamicHandleSize = calculateHandleSize();
@@ -391,6 +472,8 @@ QRect EditWindow::getHandleRect(Handle handle) const
     default: return QRect();
     }
 }
+
+
 void EditWindow::drawShape(QPainter &painter, const Shape &shape)
 {
     painter.setPen(QPen(shape.color, shape.width));
@@ -403,6 +486,55 @@ void EditWindow::drawShape(QPainter &painter, const Shape &shape)
         painter.setFont(QFont("Arial", shape.width));
         painter.setPen(shape.color);
         painter.drawText(shape.rect, Qt::AlignLeft | Qt::TextWordWrap, shape.text);
+    } else if (shape.type == NumberedNote) { // ç»˜åˆ¶åºå·ç¬”è®°
+        painter.setFont(QFont("Arial", shape.width));
+
+        // ç»˜åˆ¶ 32x32 åƒç´ çš„æ­£æ–¹å½¢éƒ¨åˆ†ï¼ˆåºå·ï¼‰
+        int boxSize = 32; // å›ºå®šå¤§å°ä¸º 32x32 åƒç´ 
+        QPoint topLeft = shape.rect.topLeft(); // åŸºäº shape.rect çš„å·¦ä¸Šè§’ä½ç½®
+
+        // ç»˜åˆ¶ 32x32 åƒç´ çš„çŸ©å½¢è¾¹æ¡†ï¼ˆé»‘è‰²ï¼‰
+        painter.setPen(Qt::black);
+        painter.setBrush(Qt::NoBrush); // ç©ºå¡«å……ï¼Œç»˜åˆ¶è¾¹æ¡†
+        painter.drawRect(topLeft.x(), topLeft.y(), boxSize, boxSize);
+
+        // ç»˜åˆ¶ 32x32 åƒç´ çš„çº¢è‰²å®å¿ƒåœ†ï¼Œä¸­å¿ƒç‚¹ä¸ºçŸ©å½¢ä¸­å¿ƒï¼ˆ16,16ï¼‰
+        painter.setBrush(Qt::red);
+        painter.setPen(Qt::NoPen); // æ— è¾¹æ¡†
+        QPoint center = topLeft + QPoint(boxSize / 2, boxSize / 2); // çŸ©å½¢ä¸­å¿ƒï¼ˆ16,16ï¼‰
+        painter.drawEllipse(center, boxSize / 2, boxSize / 2); // ç›´å¾„ä¸º 32 åƒç´ çš„åœ†ï¼Œå®Œå…¨å¡«å……çŸ©å½¢
+
+        // ç»˜åˆ¶ç™½è‰²æ•°å­—ï¼Œåœ¨çŸ©å½¢ä¸­å¿ƒç‚¹ï¼ˆ16,16ï¼‰æ°´å¹³å‚ç›´å±…ä¸­ï¼ˆæ•°å­—ä¸­ç‚¹ä¸ä¸­å¿ƒå¯¹é½ï¼‰
+        int number = shape.number;
+        QString numberText = QString::number(number);
+        QFontMetrics fm(QFont("Arial", shape.width));
+        int numberWidth = fm.horizontalAdvance(numberText);
+        int textHeight = fm.height();
+        painter.setPen(Qt::white);
+        int verticalOffset = textHeight / 2; // æ•°å­—çš„å‚ç›´ä¸­ç‚¹åç§»
+        int back = verticalOffset;
+        verticalOffset -= back;
+        verticalOffset -= back;
+        verticalOffset = verticalOffset / 2; // æœ€ç»ˆ verticalOffset = -textHeight / 4
+        QPoint textPos = center - QPoint(numberWidth / 2, verticalOffset); // æ°´å¹³å‚ç›´å±…ä¸­ï¼ˆä»¥ä¸­ç‚¹ä¸ºåŸºå‡†ï¼‰
+        painter.drawText(textPos, numberText);
+
+        // ç»˜åˆ¶æ°”æ³¡æ¡†å’Œç¬”è®°å†…å®¹
+        if (!shape.bubbleRect.isNull()) {
+            // ç»˜åˆ¶åœ†è§’çŸ©å½¢æ°”æ³¡æ¡†
+            painter.setBrush(shape.bubbleColor); // åŠé€æ˜ç°è‰²èƒŒæ™¯ï¼ˆRGBA: 200,200,200,128ï¼‰
+            painter.setPen(QPen(shape.bubbleBorderColor, 1)); // æ°”æ³¡è¾¹æ¡†é¢œè‰²ï¼ˆé»‘è‰²ï¼‰ï¼Œå®½åº¦ 1
+            QPainterPath path;
+            int radius = 5; // åœ†è§’åŠå¾„
+            path.addRoundedRect(shape.bubbleRect, radius, radius);
+            painter.drawPath(path);
+
+            // ç»˜åˆ¶ç¬”è®°å†…å®¹ï¼ˆæ–‡æœ¬ï¼‰ï¼Œåœ¨æ°”æ³¡æ¡†å†…å±…ä¸­
+            painter.setPen(shape.color);
+            QString contentText = shape.text.mid(shape.text.indexOf(". ") + 2); // ç§»é™¤ "n. " éƒ¨åˆ†
+            painter.drawText(shape.bubbleRect, Qt::AlignCenter | Qt::TextWordWrap, contentText);
+        }
+
     } else if (shape.type == Pen || shape.type == Mask) {
         painter.setPen(QPen(shape.color, shape.width, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
         painter.setBrush(Qt::NoBrush);
@@ -411,6 +543,7 @@ void EditWindow::drawShape(QPainter &painter, const Shape &shape)
         }
     }
 }
+
 
 void EditWindow::updateCanvas()
 {
@@ -439,8 +572,8 @@ Shape* EditWindow::hitTest(const QPoint &pos)
             if (isOnEllipseBorder(shape.rect, pos, shape.width)) {
                 return &shape;
             }
-        } else if (shape.type == Text) {
-            if (shape.rect.contains(pos)) {
+        } else if (shape.type == Text || shape.type == NumberedNote) {
+            if (shape.rect.contains(pos) || (shape.type == NumberedNote && shape.bubbleRect.contains(pos))) {
                 return &shape;
             }
         }
@@ -485,5 +618,21 @@ void EditWindow::setMode(int newMode)
     isDraggingSelection = false;
     activeHandle = None;
     selectedShape = nullptr;
-    qDebug() << "EditWindow: Mode set to:" << mode << "by external caller, all states reset";
+    isAdjustingFromEditMode = false;
+    toolBar->show();
+    qDebug() << "EditWindow: Mode set to:" << mode << "by external caller, all states reset, toolbar shown";
+}
+
+void EditWindow::hideToolBar()
+{
+    if (toolBar) {
+        toolBar->hide();
+    }
+}
+
+void EditWindow::showToolBar()
+{
+    if (toolBar) {
+        toolBar->show();
+    }
 }

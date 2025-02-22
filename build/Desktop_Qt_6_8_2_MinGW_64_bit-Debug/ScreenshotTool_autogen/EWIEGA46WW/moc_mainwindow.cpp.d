@@ -1,12 +1,9 @@
 F:/CppCode/ScreenshotTool/ScreenshotTool/build/Desktop_Qt_6_8_2_MinGW_64_bit-Debug/ScreenshotTool_autogen/EWIEGA46WW/moc_mainwindow.cpp: F:/CppCode/ScreenshotTool/ScreenshotTool/mainwindow.h \
   F:/CppCode/ScreenshotTool/ScreenshotTool/build/Desktop_Qt_6_8_2_MinGW_64_bit-Debug/ScreenshotTool_autogen/moc_predefs.h \
   F:/CppCode/ScreenshotTool/ScreenshotTool/common.h \
-  F:/CppCode/ScreenshotTool/ScreenshotTool/editwindow.h \
   F:/CppCode/ScreenshotTool/ScreenshotTool/magnifierwindow.h \
-  F:/CppCode/ScreenshotTool/ScreenshotTool/shape.h \
   F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/QList \
   F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/QObject \
-  F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/QPoint \
   F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/QRect \
   F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/QSize \
   F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/QSizeF \
@@ -140,7 +137,6 @@ F:/CppCode/ScreenshotTool/ScreenshotTool/build/Desktop_Qt_6_8_2_MinGW_64_bit-Deb
   F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/qversiontagging.h \
   F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/qxptype_traits.h \
   F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/qyieldcpu.h \
-  F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/QColor \
   F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/QMouseEvent \
   F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/QPainter \
   F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/QPixmap \
