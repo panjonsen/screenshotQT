@@ -322,6 +322,18 @@
 			"MU",
 			"EWIEGA46WW/moc_mainwindow.cpp",
 			null
+		],
+		[
+			"F:/CppCode/ScreenshotTool/ScreenshotTool/shape.h",
+			"MU",
+			"EWIEGA46WW/moc_shape.cpp",
+			null
+		],
+		[
+			"F:/CppCode/ScreenshotTool/ScreenshotTool/toolbarwindow.h",
+			"MU",
+			"EWIEGA46WW/moc_toolbarwindow.cpp",
+			null
 		]
 	],
 	"HEADER_EXTENSIONS" : [ "h", "hh", "h++", "hm", "hpp", "hxx", "in", "txx" ],
@@ -402,7 +414,12 @@
 			null
 		],
 		[ "F:/CppCode/ScreenshotTool/ScreenshotTool/main.cpp", "MU", null ],
-		[ "F:/CppCode/ScreenshotTool/ScreenshotTool/mainwindow.cpp", "MU", null ]
+		[ "F:/CppCode/ScreenshotTool/ScreenshotTool/mainwindow.cpp", "MU", null ],
+		[
+			"F:/CppCode/ScreenshotTool/ScreenshotTool/toolbarwindow.cpp",
+			"MU",
+			null
+		]
 	],
 	"UIC_OPTIONS" : [],
 	"UIC_SEARCH_PATHS" : [],

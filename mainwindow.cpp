@@ -9,7 +9,7 @@ MainWindow::MainWindow(QWidget *parent)
     setWindowTitle("截图工具");
     setWindowFlags(Qt::FramelessWindowHint);
     setMouseTracking(true);
-    qDebug() << "Mouse tracking enabled:" << hasMouseTracking();
+    qDebug() << "MainWindow: Mouse tracking enabled:" << hasMouseTracking();
 
     QScreen *screen = QGuiApplication::primaryScreen();
     if (screen) {
@@ -23,6 +23,10 @@ MainWindow::MainWindow(QWidget *parent)
     magnifier->show();
     currentMousePos = mapFromGlobal(QCursor::pos());
     updateMagnifierPosition();
+
+    // 初始进入选区状态
+    isSelectingInitial = true;
+    qDebug() << "MainWindow: Initialized with isSelectingInitial:" << isSelectingInitial;
 }
 
 MainWindow::~MainWindow()
@@ -34,11 +38,13 @@ MainWindow::~MainWindow()
 void MainWindow::mousePressEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton && !isEditing) {
-        startPoint = event->pos();
-        endPoint = startPoint;
-        isSelecting = true;
-        magnifier->hide();
-        update();
+        if (isSelectingInitial) {
+            startPoint = event->pos();
+            endPoint = startPoint;
+            magnifier->hide();
+            update();
+            qDebug() << "MainWindow: Mouse pressed at:" << startPoint << ", isSelectingInitial:" << isSelectingInitial;
+        }
     }
     event->ignore();
 }
@@ -46,12 +52,14 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
 void MainWindow::mouseMoveEvent(QMouseEvent *event)
 {
     currentMousePos = event->pos();
-    qDebug() << "MainWindow mouse moved to:" << currentMousePos << "isSelecting:" << isSelecting << "activeHandle:" << activeHandle;
+    qDebug() << "MainWindow: Mouse moved to:" << currentMousePos << ", isSelectingInitial:" << isSelectingInitial << ", isAdjustingSelectionState:" << isAdjustingSelectionState << ", activeHandle:" << activeHandle;
+
     if (isEditing && editWindow && editWindow->isVisible()) {
-        qDebug() << "Ignoring move event due to EditWindow being active";
+        qDebug() << "MainWindow: Ignoring move event due to EditWindow being active";
         return;
     }
-    if (isSelecting) {
+
+    if ((isSelectingInitial || isAdjustingSelectionState) && (event->buttons() & Qt::LeftButton)) {
         if (activeHandle == None) {
             endPoint = event->pos();
         } else {
@@ -95,7 +103,7 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event)
 
 void MainWindow::mouseReleaseEvent(QMouseEvent *event)
 {
-    if (event->button() == Qt::LeftButton && isSelecting) {
+    if (event->button() == Qt::LeftButton && (isSelectingInitial || isAdjustingSelectionState)) {
         if (activeHandle == None) {
             endPoint = event->pos();
         } else {
@@ -131,11 +139,12 @@ void MainWindow::mouseReleaseEvent(QMouseEvent *event)
                 break;
             }
         }
-        isSelecting = false;
+        isSelectingInitial = false; // 初始选区结束
+        isAdjustingSelectionState = false; // 中点调整结束
         isEditing = true;
         activeHandle = None;
         releaseMouse();
-        qDebug() << "Entered editing state";
+        qDebug() << "MainWindow: Entered editing state";
 
         QRect selection(startPoint, endPoint);
         selection = selection.normalized();
@@ -154,24 +163,7 @@ void MainWindow::mouseReleaseEvent(QMouseEvent *event)
             editWindow->setFocus();
         }
         connect(editWindow, &EditWindow::handleDragged, this, &MainWindow::startDragging);
-        connect(editWindow, &EditWindow::handleReleased, this, [this]() {
-            if (isSelecting) {
-                releaseMouse();
-                isSelecting = false;
-                isEditing = true;
-                activeHandle = None;
-                QRect selection(startPoint, endPoint);
-                selection = selection.normalized();
-                QPixmap selectedPixmap = originalScreenshot.copy(selection);
-                if (editWindow) {
-                    editWindow->updateScreenshot(selectedPixmap, selection.topLeft());
-                    editWindow->show();
-                    editWindow->activateWindow();
-                    editWindow->setFocus();
-                }
-                update();
-            }
-        });
+        connect(editWindow, &EditWindow::handleReleased, this, &MainWindow::resetSelectionState);
         update();
     }
 }
@@ -181,7 +173,7 @@ void MainWindow::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.drawPixmap(0, 0, screenshot);
 
-    if (isSelecting) {
+    if (isSelectingInitial || isAdjustingSelectionState) {
         QRect selection(startPoint, endPoint);
         QRegion maskRegion(rect());
         maskRegion = maskRegion.subtracted(selection.normalized());
@@ -225,24 +217,23 @@ void MainWindow::updateMagnifierPosition()
         magnifier->move(magnifier->x(), globalPos.y() - magnifier->height() - 20);
     }
     magnifier->updatePosition(currentMousePos);
-    qDebug() << "Magnifier updated to:" << magnifier->pos();
+    qDebug() << "MainWindow: Magnifier updated to:" << magnifier->pos();
 }
 
 void MainWindow::startDragging(Handle handle, const QPoint &globalPos)
 {
-    if (!isSelecting) {
+    if (!isSelectingInitial && !isAdjustingSelectionState) {
         if (editWindow) {
             editWindow->hide();
         }
         isEditing = false;
-        isSelecting = true;
+        isAdjustingSelectionState = true; // 进入中点调整状态
         activeHandle = handle;
         grabMouse();
     }
     QPoint localPos = mapFromGlobal(globalPos);
     QRect screenRect = screen()->geometry();
 
-    // 根据手柄类型调整选区，并限制在屏幕范围内
     switch (activeHandle) {
     case TopLeft:
         startPoint = localPos;
@@ -298,6 +289,7 @@ void MainWindow::startDragging(Handle handle, const QPoint &globalPos)
         break;
     }
     update();
+    qDebug() << "MainWindow: Dragging handle:" << activeHandle << ", startPoint:" << startPoint << ", endPoint:" << endPoint;
 }
 
 QPixmap MainWindow::updateSelectionPosition(const QPoint &newPos)
@@ -325,6 +317,42 @@ QPixmap MainWindow::updateSelectionPosition(const QPoint &newPos)
 
     QRect newSelection(startPoint, endPoint);
     QPixmap newScreenshot = originalScreenshot.copy(newSelection);
-    qDebug() << "New selection size:" << newSelection.width() << "x" << newSelection.height();
+    qDebug() << "MainWindow: New selection size:" << newSelection.width() << "x" << newSelection.height();
     return newScreenshot;
+}
+
+QRect MainWindow::getSelection() const
+{
+    return QRect(startPoint, endPoint).normalized();
+}
+
+void MainWindow::resetSelectionState()
+{
+    isSelectingInitial = false;
+    isAdjustingSelectionState = false;
+    activeHandle = None;
+    isEditing = true;
+    releaseMouse();
+    if (editWindow) {
+        editWindow->setMode(-1); // 重置 EditWindow 的 mode
+        QRect selection(startPoint, endPoint);
+        selection = selection.normalized();
+        QPixmap newScreenshot = originalScreenshot.copy(selection);
+        editWindow->updateScreenshot(newScreenshot, selection.topLeft());
+        editWindow->show();
+        editWindow->activateWindow();
+        editWindow->setFocus();
+    }
+    qDebug() << "MainWindow: Selection state reset, isSelectingInitial:" << isSelectingInitial << ", isAdjustingSelectionState:" << isAdjustingSelectionState << ", isEditing:" << isEditing << ", activeHandle:" << activeHandle;
+    update();
+}
+
+bool MainWindow::isSelectingInitialState() const
+{
+    return isSelectingInitial;
+}
+
+bool MainWindow::isAdjustingSelection() const
+{
+    return isAdjustingSelectionState;
 }

@@ -89,6 +89,14 @@ build CMakeFiles/ScreenshotTool.dir/editwindow.cpp.obj: CXX_COMPILER__Screenshot
   OBJECT_DIR = CMakeFiles\ScreenshotTool.dir
   OBJECT_FILE_DIR = CMakeFiles\ScreenshotTool.dir
 
+build CMakeFiles/ScreenshotTool.dir/toolbarwindow.cpp.obj: CXX_COMPILER__ScreenshotTool_unscanned_Debug F$:/CppCode/ScreenshotTool/ScreenshotTool/toolbarwindow.cpp || cmake_object_order_depends_target_ScreenshotTool
+  DEFINES = -DMINGW_HAS_SECURE_API=1 -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NEEDS_QMAIN -DQT_WIDGETS_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64
+  DEP_FILE = CMakeFiles\ScreenshotTool.dir\toolbarwindow.cpp.obj.d
+  FLAGS = -DQT_QML_DEBUG -g -std=gnu++17 -fdiagnostics-color=always
+  INCLUDES = -IF:/CppCode/ScreenshotTool/ScreenshotTool/build/Desktop_Qt_6_8_2_MinGW_64_bit-Debug/ScreenshotTool_autogen/include -isystem F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore -isystem F:/IdeInstall/qt/6.8.2/mingw_64/include -isystem F:/IdeInstall/qt/6.8.2/mingw_64/mkspecs/win32-g++ -isystem F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets -isystem F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui
+  OBJECT_DIR = CMakeFiles\ScreenshotTool.dir
+  OBJECT_FILE_DIR = CMakeFiles\ScreenshotTool.dir
+
 
 # =============================================================================
 # Link build statements for EXECUTABLE target ScreenshotTool
@@ -97,7 +105,7 @@ build CMakeFiles/ScreenshotTool.dir/editwindow.cpp.obj: CXX_COMPILER__Screenshot
 #############################################
 # Link the executable ScreenshotTool.exe
 
-build ScreenshotTool.exe: CXX_EXECUTABLE_LINKER__ScreenshotTool_Debug CMakeFiles/ScreenshotTool.dir/ScreenshotTool_autogen/mocs_compilation.cpp.obj CMakeFiles/ScreenshotTool.dir/main.cpp.obj CMakeFiles/ScreenshotTool.dir/mainwindow.cpp.obj CMakeFiles/ScreenshotTool.dir/magnifierwindow.cpp.obj CMakeFiles/ScreenshotTool.dir/editwindow.cpp.obj | F$:/IdeInstall/qt/6.8.2/mingw_64/lib/libQt6Widgets.a F$:/IdeInstall/qt/6.8.2/mingw_64/lib/libQt6Gui.a F$:/IdeInstall/qt/6.8.2/mingw_64/lib/libQt6Core.a F$:/IdeInstall/qt/6.8.2/mingw_64/lib/libQt6EntryPoint.a || ScreenshotTool_autogen ScreenshotTool_autogen_timestamp_deps
+build ScreenshotTool.exe: CXX_EXECUTABLE_LINKER__ScreenshotTool_Debug CMakeFiles/ScreenshotTool.dir/ScreenshotTool_autogen/mocs_compilation.cpp.obj CMakeFiles/ScreenshotTool.dir/main.cpp.obj CMakeFiles/ScreenshotTool.dir/mainwindow.cpp.obj CMakeFiles/ScreenshotTool.dir/magnifierwindow.cpp.obj CMakeFiles/ScreenshotTool.dir/editwindow.cpp.obj CMakeFiles/ScreenshotTool.dir/toolbarwindow.cpp.obj | F$:/IdeInstall/qt/6.8.2/mingw_64/lib/libQt6Widgets.a F$:/IdeInstall/qt/6.8.2/mingw_64/lib/libQt6Gui.a F$:/IdeInstall/qt/6.8.2/mingw_64/lib/libQt6Core.a F$:/IdeInstall/qt/6.8.2/mingw_64/lib/libQt6EntryPoint.a || ScreenshotTool_autogen ScreenshotTool_autogen_timestamp_deps
   FLAGS = -DQT_QML_DEBUG -g
   LINK_FLAGS = -mwindows
   LINK_LIBRARIES = F:/IdeInstall/qt/6.8.2/mingw_64/lib/libQt6Widgets.a  F:/IdeInstall/qt/6.8.2/mingw_64/lib/libQt6Gui.a  F:/IdeInstall/qt/6.8.2/mingw_64/lib/libQt6Core.a  -lmpr  -luserenv  -lmingw32  F:/IdeInstall/qt/6.8.2/mingw_64/lib/libQt6EntryPoint.a  -lshell32  -ld3d11  -ldxgi  -ldxguid  -ld3d12  -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32

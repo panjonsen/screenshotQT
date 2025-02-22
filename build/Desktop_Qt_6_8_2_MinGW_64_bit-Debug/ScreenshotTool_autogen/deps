@@ -13,8 +13,12 @@ ScreenshotTool_autogen/timestamp: \
 	F:/CppCode/ScreenshotTool/ScreenshotTool/main.cpp \
 	F:/CppCode/ScreenshotTool/ScreenshotTool/mainwindow.cpp \
 	F:/CppCode/ScreenshotTool/ScreenshotTool/mainwindow.h \
+	F:/CppCode/ScreenshotTool/ScreenshotTool/shape.h \
+	F:/CppCode/ScreenshotTool/ScreenshotTool/toolbarwindow.cpp \
+	F:/CppCode/ScreenshotTool/ScreenshotTool/toolbarwindow.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/QList \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/QObject \
+	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/QPoint \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/QRect \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/QSize \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/QSizeF \
@@ -98,6 +102,7 @@ ScreenshotTool_autogen/timestamp: \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/qprocessordetection.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/qrect.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/qrefcount.h \
+	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/qregularexpression.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/qscopedpointer.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/qscopeguard.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/qset.h \
@@ -148,6 +153,7 @@ ScreenshotTool_autogen/timestamp: \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/qversiontagging.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/qxptype_traits.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/qyieldcpu.h \
+	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/QColor \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/QMouseEvent \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/QPainter \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/QPixmap \
@@ -187,14 +193,27 @@ ScreenshotTool_autogen/timestamp: \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qtguiexports.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qtguiglobal.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qtransform.h \
+	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qvalidator.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qvector2d.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qvectornd.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qwindowdefs.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qwindowdefs_win.h \
+	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/QColorDialog \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/QMainWindow \
+	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/QPushButton \
+	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/QSlider \
+	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/QSpinBox \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/QWidget \
+	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/qabstractbutton.h \
+	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/qabstractslider.h \
+	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/qabstractspinbox.h \
+	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/qcolordialog.h \
+	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/qdialog.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/qmainwindow.h \
+	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/qpushbutton.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/qsizepolicy.h \
+	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/qslider.h \
+	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/qspinbox.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/qtabwidget.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/qtwidgets-config.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/qtwidgetsexports.h \
