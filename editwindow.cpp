@@ -150,9 +150,17 @@ void EditWindow::updateScreenshot(const QPixmap &newScreenshot, const QPoint &ne
     sizeDisplayWindow->setSizeText(sizeText);
     updateSizeDisplayPosition();
 
+    // 添加工具栏位置更新
+    if (toolBar) {
+        toolBar->adjustPosition();
+    }
+
     update();
     qDebug() << "EditWindow: Screenshot updated, size:" << newScreenshot.size() << ", pos:" << newPos;
 }
+
+
+
 
 void EditWindow::paintEvent(QPaintEvent *event)
 {
@@ -219,6 +227,10 @@ void EditWindow::mousePressEvent(QMouseEvent *event)
 void EditWindow::mouseMoveEvent(QMouseEvent *event)
 {
     QPoint pos = event->pos();
+
+    // 限制 pos 在边界内
+    pos.setX(qBound(0, pos.x(), width() - 1));
+    pos.setY(qBound(0, pos.y(), height() - 1));
 
     if ((mode == 0 || mode == 1) && isDrawing && (event->buttons() & Qt::LeftButton)) {
         pos.setX(qBound(borderWidth, pos.x(), width() - borderWidth));
@@ -524,7 +536,11 @@ void EditWindow::moveEvent(QMoveEvent *event)
 {
     QWidget::moveEvent(event);
     updateSizeDisplayPosition();
+    if (toolBar) {
+        toolBar->adjustPosition(); // 添加工具栏位置更新
+    }
 }
+
 
 void EditWindow::showEvent(QShowEvent *event)
 {
@@ -646,7 +662,9 @@ void EditWindow::startDrawingShape(const QPoint &pos)
     } else if (mode == 3 || mode == 4) { // 画笔或遮罩
         Shape shape;
         shape.type = (mode == 3) ? Pen : Mask;
-        shape.points.append(pos);
+        // 限制初始点在边界内
+        QPoint boundedPos(qBound(0, pos.x(), width() - 1), qBound(0, pos.y(), height() - 1));
+        shape.points.append(boundedPos);
         shape.color = (mode == 3) ? penColor : Qt::gray;
         shape.width = (mode == 3) ? penWidth : mosaicSize;
         shapes.append(shape);
@@ -662,8 +680,6 @@ void EditWindow::startDrawingShape(const QPoint &pos)
         qDebug() << "EditWindow: Arrow shape created at:" << pos;
     }
 }
-
-
 void EditWindow::handleWindowDragging(QMouseEvent *event)
 {
     QPoint globalOffset = event->globalPosition().toPoint() - dragStartPos;
@@ -822,14 +838,17 @@ void EditWindow::drawTemporaryPreview(const QPoint &pos, QPainter &painter)
         }
 
         if (currentShape) {
+            // 限制鼠标位置在边界内
+            QPoint boundedPos(qBound(0, pos.x(), width() - 1), qBound(0, pos.y(), height() - 1));
+
             if (mode == 3 || mode == 4) {
                 if (QApplication::keyboardModifiers() & Qt::ShiftModifier && mode == 3) {
-                    QPoint delta = pos - startPoint;
+                    QPoint delta = boundedPos - startPoint;
                     QPoint adjustedEnd;
                     if (qAbs(delta.x()) > qAbs(delta.y())) {
-                        adjustedEnd = QPoint(pos.x(), startPoint.y());
+                        adjustedEnd = QPoint(boundedPos.x(), startPoint.y());
                     } else {
-                        adjustedEnd = QPoint(startPoint.x(), pos.y());
+                        adjustedEnd = QPoint(startPoint.x(), boundedPos.y());
                     }
                     if (currentShape->points.size() > 1) {
                         currentShape->points[1] = adjustedEnd;
@@ -837,7 +856,7 @@ void EditWindow::drawTemporaryPreview(const QPoint &pos, QPainter &painter)
                         currentShape->points.append(adjustedEnd);
                     }
                 } else {
-                    currentShape->points.append(pos);
+                    currentShape->points.append(boundedPos);
                 }
             }
 
@@ -864,7 +883,6 @@ void EditWindow::drawTemporaryPreview(const QPoint &pos, QPainter &painter)
         }
     }
 }
-
 
 
 
@@ -956,9 +974,11 @@ void EditWindow::stopHandleAdjustment()
         mainWindow->resetSelectionState();
     }
     toolBar->show();
+    toolBar->adjustPosition(); // 添加工具栏位置调整
     qDebug() << "EditWindow: Handle released, all states reset";
     update();
 }
+
 
 void EditWindow::stopShapeDragging()
 {
@@ -1019,6 +1039,13 @@ void EditWindow::finishDrawingShape(const QPoint &pos)
         update();
         isDrawing = false;
     } else if (mode == 3 || mode == 4 || mode == 6) {
+        // 确保最后的点在边界内
+        QPoint boundedPos(qBound(0, pos.x(), width() - 1), qBound(0, pos.y(), height() - 1));
+        if (mode == 3 || mode == 4) {
+            if (!shapes.isEmpty() && (shapes.last().type == Pen || shapes.last().type == Mask)) {
+                shapes.last().points.append(boundedPos);
+            }
+        }
         tempLayer.fill(Qt::transparent);
         updateCanvas();
         update();
