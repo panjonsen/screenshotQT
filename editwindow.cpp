@@ -208,11 +208,14 @@ void EditWindow::mousePressEvent(QMouseEvent *event)
     } else if (event->button() == Qt::RightButton) {
         MainWindow *mainWindow = qobject_cast<MainWindow*>(parent());
         if (mainWindow) {
-            mainWindow->cancelEditing();
+            mainWindow->cancelEditing(mapToGlobal(event->pos())); // 传递全局鼠标位置
             qDebug() << "EditWindow: Right-click detected, returning to initial selection state";
         }
     }
 }
+
+
+
 void EditWindow::mouseMoveEvent(QMouseEvent *event)
 {
     QPoint pos = event->pos();

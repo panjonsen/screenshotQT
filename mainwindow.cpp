@@ -51,7 +51,7 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
         }
     } else if (event->button() == Qt::RightButton) {
         if (editWindow && editWindow->isVisible()) {
-            cancelEditing();
+            cancelEditing(event->pos()); // 传递当前鼠标位置
         } else {
             qDebug() << "MainWindow: Right-click detected, no edit window present, exiting program";
             QCoreApplication::quit();
@@ -59,7 +59,6 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
     }
     event->ignore();
 }
-
 
 void MainWindow::mouseMoveEvent(QMouseEvent *event)
 {
@@ -387,8 +386,7 @@ bool MainWindow::isAdjustingSelectionState() const
 }
 
 
-
-void MainWindow::cancelEditing()
+void MainWindow::cancelEditing(const QPoint &mousePos)
 {
     if (editWindow) {
         editWindow->hide();
@@ -403,7 +401,9 @@ void MainWindow::cancelEditing()
     startPoint = QPoint();
     endPoint = QPoint();
     screenshot = originalScreenshot; // 重置截图
+    currentMousePos = mousePos; // 更新当前鼠标位置
+    updateMagnifierPosition(); // 更新放大镜位置
     magnifier->show();
     update();
-    qDebug() << "MainWindow: Editing canceled, returned to initial selection state";
+    qDebug() << "MainWindow: Editing canceled, returned to initial selection state, magnifier at:" << mousePos;
 }

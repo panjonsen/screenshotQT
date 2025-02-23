@@ -20,7 +20,7 @@ public:
     void resetSelectionState();
     bool isSelectingInitialState() const;
     bool isAdjustingSelectionState() const;
-    void cancelEditing(); // 移动到 public
+    void cancelEditing(const QPoint &mousePos); // 修改为接受鼠标位置参数
 
 protected:
     void mousePressEvent(QMouseEvent *event) override;
