@@ -188,508 +188,75 @@ void EditWindow::mousePressEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton) {
         QPoint pos = event->pos();
-        int dynamicHandleSize = calculateHandleSize();
         MainWindow *mainWindow = qobject_cast<MainWindow*>(parent());
 
-        selectedShape = hitTest(pos);
-        if (selectedShape) {
-            isDragging = true;
-            if (selectedShape->type == NumberedNote && selectedShape->bubbleRect.contains(pos)) {
-                dragStartPos = pos;
-                selectedShape->offset = pos - selectedShape->bubbleRect.topLeft();
-            } else if (selectedShape->type == Arrow) {
-                dragStartPos = pos;
-            } else {
-                dragStartPos = pos;
-                selectedShape->offset = pos - selectedShape->rect.topLeft();
-            }
-            qDebug() << "EditWindow: Dragging shape at:" << pos << ", mode:" << mode << ", offset:" << selectedShape->offset;
-            return;
-        }
+        // 检测并启动形状拖拽
+        startShapeDragging(pos);
 
-        if (mode == -1) {
-            bool hitHandle = false;
-            for (int i = 0; i < 8; ++i) {
-                Handle handle = static_cast<Handle>(i + 1);
-                QRect handleRect = getHandleRect(handle);
-                handleRect.setSize(QSize(dynamicHandleSize, dynamicHandleSize));
-                handleRect.moveCenter(getHandleRect(handle).center());
-                if (handleRect.contains(pos)) {
-                    activeHandle = handle;
-                    isAdjustingHandle = true;
-                    isAdjustingFromEditMode = true;
-                    dragStartPos = event->globalPosition().toPoint();
-                    toolBar->hide();
-                    qDebug() << "EditWindow: Handle pressed:" << activeHandle << "at:" << pos;
-                    emit handleDragged(activeHandle, dragStartPos);
-                    hitHandle = true;
-                    break;
-                }
-            }
-
-            if (!hitHandle && isDragMode && !isAdjustingHandle) {
-                dragStartPos = event->globalPosition().toPoint();
-                isDraggingSelection = true;
-                toolBar->hide();
-                qDebug() << "EditWindow: Start dragging selection at:" << dragStartPos;
-                return;
-            }
-
-            if (hitHandle) {
-                return;
+        // 如果没有选中形状，且处于无模式（mode == -1）
+        if (!selectedShape && mode == -1) {
+            startHandleAdjustment(pos, event);
+            if (!isAdjustingHandle) {
+                startWindowDragging(event->globalPosition().toPoint());
             }
         }
 
-        if (mode >= 0 && !isAdjustingHandle && !isDragging && !isDraggingSelection && activeHandle == None &&
-            mainWindow && !mainWindow->isAdjustingSelectionState()) {
-            startPoint = pos;
-            isDrawing = true;
-            qDebug() << "EditWindow: Start drawing at:" << pos << ", mode:" << mode;
-            if (mode == 2) {
-                QString text = QInputDialog::getMultiLineText(this, "输入文本", "请输入文本:");
-                if (!text.isEmpty()) {
-                    Shape shape;
-                    shape.type = Text;
-                    QFont font("Arial", fontSize);
-                    QRect textRect = QFontMetrics(font).boundingRect(QRect(0, 0, width() - pos.x(), height() - pos.y()), Qt::AlignLeft | Qt::TextWordWrap, text);
-                    shape.rect = QRect(pos, textRect.size());
-                    shape.text = text;
-                    shape.color = textColor;
-                    shape.width = fontSize;
-                    shapes.append(shape);
-                    updateCanvas();
-                    update();
-                    isDrawing = false;
-                }
-            } else if (mode == 5) {
-                QString text = QInputDialog::getMultiLineText(this, "输入序号笔记", "请输入笔记内容:");
-                if (!text.isEmpty()) {
-                    Shape shape;
-                    shape.type = NumberedNote;
-                    QFont font("Arial", fontSize);
-                    QString numberedText = QString("%1. %2").arg(noteNumber).arg(text);
-                    shape.rect = QRect(pos, QSize(32, 32));
-                    shape.text = numberedText;
-                    shape.color = textColor;
-                    shape.width = fontSize;
-                    shape.number = noteNumber;
-                    shape.bubbleColor = QColor(200, 200, 200, 128);
-                    shape.bubbleBorderColor = Qt::black;
-
-                    QFontMetrics fm(font);
-                    QString contentText = text;
-                    int textWidth = fm.horizontalAdvance(contentText) + 20;
-                    int textHeight = fm.height() * (contentText.count('\n') + 1) + 10;
-                    int bubbleX = pos.x() + 34 + 5;
-                    int bubbleY = pos.y() - (textHeight - 32) / 2;
-                    shape.bubbleRect = QRect(bubbleX, bubbleY, textWidth, textHeight);
-
-                    shapes.append(shape);
-                    noteNumber++;
-                    updateCanvas();
-                    update();
-                    isDrawing = false;
-                }
-            } else if (mode == 3 || mode == 4) {
-                Shape shape;
-                shape.type = (mode == 3) ? Pen : Mask;
-                shape.points.append(pos);
-                shape.color = (mode == 3) ? penColor : Qt::gray;
-                shape.width = (mode == 3) ? penWidth : mosaicSize;
-                shapes.append(shape);
-                updateCanvas();
-                update();
-            } else if (mode == 6) {
-                Shape shape;
-                shape.type = Arrow;
-                shape.points.append(pos); // 记录起点
-                shape.color = shapeBorderColor;
-                shape.width = shapeBorderWidth;
-                shapes.append(shape);
-                qDebug() << "EditWindow: Arrow shape created at:" << pos;
-            }
+        // 如果没有调整手柄或拖拽，则开始绘制新形状
+        if (mode >= 0 && !isAdjustingHandle && !isDragging && !isDraggingSelection &&
+            activeHandle == None && mainWindow && !mainWindow->isAdjustingSelectionState()) {
+            startDrawingShape(pos);
         }
     }
 }
-
-
 
 
 void EditWindow::mouseMoveEvent(QMouseEvent *event)
 {
     QPoint pos = event->pos();
 
-    // 在绘制矩形或圆形时限制鼠标边界，考虑边框宽度
     if ((mode == 0 || mode == 1) && isDrawing && (event->buttons() & Qt::LeftButton)) {
         pos.setX(qBound(borderWidth, pos.x(), width() - borderWidth));
         pos.setY(qBound(borderWidth, pos.y(), height() - borderWidth));
     }
 
     if (isDraggingSelection && (event->buttons() & Qt::LeftButton)) {
-        QPoint globalOffset = event->globalPosition().toPoint() - dragStartPos;
-        QPoint newPos = this->pos() + globalOffset;
-
-        QRect screenRect = screen()->geometry();
-        int maxX = screenRect.width() - width();
-        int maxY = screenRect.height() - height();
-        newPos.setX(qBound(0, newPos.x(), maxX));
-        newPos.setY(qBound(0, newPos.y(), maxY));
-
-        MainWindow *mainWindow = qobject_cast<MainWindow*>(parent());
-        if (mainWindow) {
-            QSize originalSize = size();
-            QPixmap newScreenshot = mainWindow->updateSelectionPosition(newPos);
-            updateScreenshot(newScreenshot, newPos);
-            setFixedSize(originalSize);
-        }
-
-        dragStartPos = event->globalPosition().toPoint();
-        qDebug() << "EditWindow: Dragging selection to:" << newPos << ", size:" << size();
+        handleWindowDragging(event);
     } else if (activeHandle != None && (event->buttons() & Qt::LeftButton)) {
         emit handleDragged(activeHandle, event->globalPosition().toPoint());
     } else if (isDragging && (event->buttons() & Qt::LeftButton) && selectedShape) {
-        QPoint offset = pos - dragStartPos;
-        if (selectedShape->type == Arrow && selectedShape->points.size() == 2) {
-            if (selectedShape->offset == QPoint(0, 0)) {
-                selectedShape->points[0] = pos;
-            } else if (selectedShape->offset == QPoint(1, 1)) {
-                selectedShape->points[1] = pos;
-            } else {
-                QPoint oldStart = selectedShape->points[0];
-                QPoint oldEnd = selectedShape->points[1];
-                selectedShape->points[0] = oldStart + offset;
-                selectedShape->points[1] = oldEnd + offset;
-                selectedShape->points[0].setX(qBound(0, selectedShape->points[0].x(), width()));
-                selectedShape->points[0].setY(qBound(0, selectedShape->points[0].y(), height()));
-                selectedShape->points[1].setX(qBound(0, selectedShape->points[1].x(), width()));
-                selectedShape->points[1].setY(qBound(0, selectedShape->points[1].y(), height()));
-            }
-            drawingLayer.fill(Qt::transparent);
-            updateCanvas();
-            update();
-            dragStartPos = pos;
-            qDebug() << "EditWindow: Dragging arrow, start:" << selectedShape->points[0] << ", end:" << selectedShape->points[1];
-        } else if (selectedShape->type == NumberedNote && !selectedShape->bubbleRect.isNull()) {
-            // 计算序号和气泡框的初始相对偏移
-            QPoint bubbleOffset = selectedShape->bubbleRect.topLeft() - selectedShape->rect.topLeft();
-
-            // 计算新的序号位置
-            int rectWidth = selectedShape->rect.width();
-            int rectHeight = selectedShape->rect.height();
-            QRect combinedRect = selectedShape->rect | selectedShape->bubbleRect;
-            int combinedWidth = combinedRect.width();
-            int combinedHeight = combinedRect.height();
-
-            QPoint newRectTopLeft = selectedShape->rect.topLeft() + offset;
-            // 限制序号位置，考虑整个组合的宽度和高度
-            newRectTopLeft.setX(qBound(borderWidth, newRectTopLeft.x(), width() - combinedWidth - borderWidth - 1));
-            newRectTopLeft.setY(qBound(borderWidth, newRectTopLeft.y(), height() - combinedHeight - borderWidth - 1));
-
-            // 更新序号位置
-            selectedShape->rect.moveTo(newRectTopLeft);
-            // 根据固定偏移更新气泡框位置
-            selectedShape->bubbleRect.moveTo(newRectTopLeft + bubbleOffset);
-
-            updateCanvas();
-            update();
-            dragStartPos = pos;
-            qDebug() << "EditWindow: Dragging NumberedNote, rect:" << selectedShape->rect << ", bubbleRect:" << selectedShape->bubbleRect;
-        } else if (selectedShape->type == Rectangle || selectedShape->type == Ellipse) {
-            int rectWidth = selectedShape->rect.width();
-            int rectHeight = selectedShape->rect.height();
-            QPoint newRectTopLeft = selectedShape->rect.topLeft() + offset;
-            newRectTopLeft.setX(qBound(borderWidth, newRectTopLeft.x(), width() - rectWidth - borderWidth - 1));
-            newRectTopLeft.setY(qBound(borderWidth, newRectTopLeft.y(), height() - rectHeight - borderWidth - 1));
-            selectedShape->rect.moveTo(newRectTopLeft);
-            updateCanvas();
-            update();
-            dragStartPos = pos;
-        } else {
-            int rectWidth = selectedShape->rect.width();
-            int rectHeight = selectedShape->rect.height();
-            int borderAdjustment = (selectedShape->type == Rectangle || selectedShape->type == Ellipse) ? shapeBorderWidth : 0;
-            int halfBorder = borderAdjustment / 2;
-            QPoint newRectTopLeft = selectedShape->rect.topLeft() + offset;
-            newRectTopLeft.setX(qBound(halfBorder, newRectTopLeft.x(), width() - rectWidth - halfBorder));
-            newRectTopLeft.setY(qBound(halfBorder, newRectTopLeft.y(), height() - rectHeight - halfBorder));
-            selectedShape->rect.moveTo(newRectTopLeft);
-            updateCanvas();
-            update();
-            dragStartPos = pos;
-        }
-        qDebug() << "EditWindow: Moving shape with offset:" << offset << ", new rect pos:" << selectedShape->rect.topLeft();
+        handleShapeDragging(pos);
     } else if (mode >= 0 && (event->buttons() & Qt::LeftButton) && isDrawing) {
         QPainter painter(&tempLayer);
         painter.setRenderHint(QPainter::Antialiasing);
         tempLayer.fill(Qt::transparent);
-        if (mode == 0 || mode == 1) {
-            QPoint endPoint = pos;
-            endPoint.setX(qBound(borderWidth, endPoint.x(), width() - borderWidth));
-            endPoint.setY(qBound(borderWidth, endPoint.y(), height() - borderWidth));
-
-            int left = qMin(startPoint.x(), endPoint.x());
-            int top = qMin(startPoint.y(), endPoint.y());
-            int right = qMax(startPoint.x(), endPoint.x());
-            int bottom = qMax(startPoint.y(), endPoint.y());
-
-            left = qMax(borderWidth, left);
-            top = qMax(borderWidth, top);
-            right = qMin(right, width() - borderWidth - 1);
-            bottom = qMin(bottom, height() - borderWidth - 1);
-
-            currentRect.setCoords(left, top, right, bottom);
-
-            painter.setPen(QPen(shapeBorderColor, shapeBorderWidth));
-            painter.setBrush(Qt::NoBrush);
-            if (mode == 0) {
-                painter.drawRect(currentRect);
-            } else if (mode == 1) {
-                if (QApplication::keyboardModifiers() & Qt::ShiftModifier) {
-                    int size = qMin(currentRect.width(), currentRect.height());
-                    if (endPoint.x() < startPoint.x()) {
-                        currentRect.setLeft(currentRect.right() - size);
-                    } else {
-                        currentRect.setRight(currentRect.left() + size);
-                    }
-                    if (endPoint.y() < startPoint.y()) {
-                        currentRect.setTop(currentRect.bottom() - size);
-                    } else {
-                        currentRect.setBottom(currentRect.top() + size);
-                    }
-                    if (currentRect.right() > width() - borderWidth - 1) {
-                        currentRect.setRight(width() - borderWidth - 1);
-                        currentRect.setLeft(currentRect.right() - size);
-                    }
-                    if (currentRect.bottom() > height() - borderWidth - 1) {
-                        currentRect.setBottom(height() - borderWidth - 1);
-                        currentRect.setTop(currentRect.bottom() - size);
-                    }
-                }
-                painter.drawEllipse(currentRect);
-            }
-            update();
-        } else if ((mode == 3 || mode == 4 || mode == 6) && isDrawing) {
-            Shape *currentShape = nullptr;
-            if (mode == 3 || mode == 4) {
-                if (!shapes.isEmpty() && (shapes.last().type == Pen || shapes.last().type == Mask)) {
-                    currentShape = &shapes.last();
-                }
-            } else if (mode == 6) {
-                if (!shapes.isEmpty() && shapes.last().type == Arrow) {
-                    currentShape = &shapes.last();
-                    if (currentShape->points.size() == 1) {
-                        currentShape->points.append(pos);
-                    } else if (currentShape->points.size() == 2) {
-                        currentShape->points[1] = pos;
-                    }
-                }
-            }
-
-            if (currentShape) {
-                if (mode == 3 || mode == 4) {
-                    if (QApplication::keyboardModifiers() & Qt::ShiftModifier && mode == 3) {
-                        QPoint delta = pos - startPoint;
-                        QPoint adjustedEnd;
-                        if (qAbs(delta.x()) > qAbs(delta.y())) {
-                            adjustedEnd = QPoint(pos.x(), startPoint.y());
-                        } else {
-                            adjustedEnd = QPoint(startPoint.x(), pos.y());
-                        }
-                        if (currentShape->points.size() > 1) {
-                            currentShape->points[1] = adjustedEnd;
-                        } else {
-                            currentShape->points.append(adjustedEnd);
-                        }
-                    } else {
-                        currentShape->points.append(pos);
-                    }
-                }
-
-                painter.setPen(QPen(currentShape->color, currentShape->width, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-                painter.setBrush(Qt::NoBrush);
-                if (mode == 3 || mode == 4) {
-                    for (int i = 1; i < currentShape->points.size(); ++i) {
-                        painter.drawLine(currentShape->points[i - 1], currentShape->points[i]);
-                    }
-                } else if (mode == 6) {
-                    if (currentShape->points.size() == 2) {
-                        QPoint start = currentShape->points[0];
-                        QPoint end = currentShape->points[1];
-                        painter.drawLine(start, end);
-                        double angle = atan2(end.y() - start.y(), end.x() - start.x());
-                        int arrowSize = currentShape->width * 3;
-                        QPointF arrowP1 = end - QPointF(cos(angle + M_PI / 6) * arrowSize, sin(angle + M_PI / 6) * arrowSize);
-                        QPointF arrowP2 = end - QPointF(cos(angle - M_PI / 6) * arrowSize, sin(angle - M_PI / 6) * arrowSize);
-                        painter.drawLine(end, arrowP1);
-                        painter.drawLine(end, arrowP2);
-                    }
-                }
-                update();
-            }
-        }
+        drawTemporaryPreview(pos, painter);
     } else {
-        QCursor cursor;
-        Shape *hoveredShape = hitTest(pos);
-        int hitBorderWidth = 10;
-        if (hoveredShape) {
-            if (hoveredShape->type == Arrow && hoveredShape->points.size() == 2) {
-                QRect startRect(hoveredShape->points[0] - QPoint(hitBorderWidth, hitBorderWidth), QSize(hitBorderWidth * 2, hitBorderWidth * 2));
-                QRect endRect(hoveredShape->points[1] - QPoint(hitBorderWidth, hitBorderWidth), QSize(hitBorderWidth * 2, hitBorderWidth * 2));
-                if (startRect.contains(pos) || endRect.contains(pos)) {
-                    cursor = Qt::CrossCursor;
-                } else {
-                    cursor = Qt::SizeAllCursor;
-                }
-            } else {
-                cursor = Qt::SizeAllCursor;
-            }
-        } else if (mode == 0 || mode == 1 || mode == 3 || mode == 6) {
-            cursor = Qt::ArrowCursor;
-        } else if (mode == -1 && isDragMode) {
-            cursor = Qt::OpenHandCursor;
-            int dynamicHandleSize = calculateHandleSize();
-            for (int i = 0; i < 8; ++i) {
-                Handle handle = static_cast<Handle>(i + 1);
-                QRect handleRect = getHandleRect(handle);
-                handleRect.setSize(QSize(dynamicHandleSize, dynamicHandleSize));
-                handleRect.moveCenter(getHandleRect(handle).center());
-                if (handleRect.contains(pos)) {
-                    switch (handle) {
-                    case TopLeft:
-                    case BottomRight:
-                        cursor = Qt::SizeFDiagCursor;
-                        break;
-                    case TopRight:
-                    case BottomLeft:
-                        cursor = Qt::SizeBDiagCursor;
-                        break;
-                    case Top:
-                    case Bottom:
-                        cursor = Qt::SizeVerCursor;
-                        break;
-                    case Left:
-                    case Right:
-                        cursor = Qt::SizeHorCursor;
-                        break;
-                    default:
-                        break;
-                    }
-                    break;
-                }
-            }
-        } else if (mode == 4) {
-            QPixmap cursorPixmap(mosaicSize, mosaicSize);
-            cursorPixmap.fill(Qt::transparent);
-            QPainter cursorPainter(&cursorPixmap);
-            cursorPainter.setRenderHint(QPainter::Antialiasing);
-            cursorPainter.setBrush(Qt::gray);
-            cursorPainter.setPen(Qt::NoPen);
-            cursorPainter.drawEllipse(0, 0, mosaicSize, mosaicSize);
-            cursor = QCursor(cursorPixmap);
-        } else {
-            cursor = Qt::ArrowCursor;
-        }
-        setCursor(cursor);
+        updateCursorStyle(pos);
     }
 }
+
 
 void EditWindow::mouseReleaseEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton) {
         QPoint pos = event->pos();
 
-        // 在绘制矩形或圆形时限制鼠标松开时的坐标，考虑边框宽度
         if ((mode == 0 || mode == 1) && isDrawing) {
             pos.setX(qBound(borderWidth, pos.x(), width() - borderWidth));
             pos.setY(qBound(borderWidth, pos.y(), height() - borderWidth));
         }
 
         if (isDraggingSelection) {
-            isDraggingSelection = false;
-            toolBar->show();
-            toolBar->adjustPosition();
-            qDebug() << "EditWindow: Stop dragging selection, toolbar shown and repositioned";
+            stopWindowDragging();
         } else if (activeHandle != None) {
-            emit handleReleased();
-            activeHandle = None;
-            isAdjustingHandle = false;
-            isAdjustingFromEditMode = false;
-            isDrawing = false;
-            isDragging = false;
-            MainWindow *mainWindow = qobject_cast<MainWindow*>(parent());
-            if (mainWindow) {
-                mainWindow->resetSelectionState();
-            }
-            toolBar->show();
-            qDebug() << "EditWindow: Handle released, all states reset";
-            update();
+            stopHandleAdjustment();
         } else if (isDragging) {
-            isDragging = false;
-            selectedShape = nullptr;
-            updateCanvas();
-            update();
-            qDebug() << "EditWindow: Shape dragging stopped";
-        } else if ((mode == 0 || mode == 1) && isDrawing) {
-            if (startPoint != pos) {
-                Shape shape;
-                shape.type = (mode == 0) ? Rectangle : Ellipse;
-
-                int left = qMin(startPoint.x(), pos.x());
-                int top = qMin(startPoint.y(), pos.y());
-                int right = qMax(startPoint.x(), pos.x());
-                int bottom = qMax(startPoint.y(), pos.y());
-
-                // 严格限制四边，右下角减去1像素以避免绘制偏移
-                left = qMax(borderWidth, left);
-                top = qMax(borderWidth, top);
-                right = qMin(right, width() - borderWidth - 1);
-                bottom = qMin(bottom, height() - borderWidth - 1);
-
-                shape.rect.setCoords(left, top, right, bottom);
-
-                if (mode == 1 && (QApplication::keyboardModifiers() & Qt::ShiftModifier)) {
-                    int size = qMin(shape.rect.width(), shape.rect.height());
-                    if (pos.x() < startPoint.x()) {
-                        shape.rect.setLeft(shape.rect.right() - size);
-                    } else {
-                        shape.rect.setRight(shape.rect.left() + size);
-                    }
-                    if (pos.y() < startPoint.y()) {
-                        shape.rect.setTop(shape.rect.bottom() - size);
-                    } else {
-                        shape.rect.setBottom(shape.rect.top() + size);
-                    }
-                    // 确保正圆形的右下角不超出边界
-                    if (shape.rect.right() > width() - borderWidth - 1) {
-                        shape.rect.setRight(width() - borderWidth - 1);
-                        shape.rect.setLeft(shape.rect.right() - size);
-                    }
-                    if (shape.rect.bottom() > height() - borderWidth - 1) {
-                        shape.rect.setBottom(height() - borderWidth - 1);
-                        shape.rect.setTop(shape.rect.bottom() - size);
-                    }
-                }
-
-                shape.width = shapeBorderWidth;
-                shape.color = shapeBorderColor;
-                shapes.append(shape);
-            }
-            tempLayer.fill(Qt::transparent);
-            updateCanvas();
-            update();
-            isDrawing = false;
-        } else if (mode == 3 || mode == 4 || mode == 6) {
-            tempLayer.fill(Qt::transparent);
-            updateCanvas();
-            update();
-            isDrawing = false;
-            qDebug() << "EditWindow: Mode 3/4/6 completed, mode:" << mode << ", isDrawing:" << isDrawing;
+            stopShapeDragging();
+        } else if (mode == 0 || mode == 1 || mode == 3 || mode == 4 || mode == 6) {
+            finishDrawingShape(pos);
         }
     }
 }
-
-
-
 void EditWindow::mouseDoubleClickEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton) {
@@ -964,4 +531,492 @@ void EditWindow::hideEvent(QHideEvent *event)
 {
     QWidget::hideEvent(event);
     sizeDisplayWindow->hide();
+}
+
+
+void EditWindow::startShapeDragging(const QPoint &pos)
+{
+    selectedShape = hitTest(pos);
+    if (selectedShape) {
+        isDragging = true;
+        if (selectedShape->type == NumberedNote && selectedShape->bubbleRect.contains(pos)) {
+            dragStartPos = pos;
+            selectedShape->offset = pos - selectedShape->bubbleRect.topLeft();
+        } else if (selectedShape->type == Arrow) {
+            dragStartPos = pos;
+        } else {
+            dragStartPos = pos;
+            selectedShape->offset = pos - selectedShape->rect.topLeft();
+        }
+        qDebug() << "EditWindow: Dragging shape at:" << pos << ", mode:" << mode << ", offset:" << selectedShape->offset;
+    }
+}
+void EditWindow::startHandleAdjustment(const QPoint &pos, QMouseEvent *event)
+{
+    int dynamicHandleSize = calculateHandleSize();
+    bool hitHandle = false;
+    for (int i = 0; i < 8; ++i) {
+        Handle handle = static_cast<Handle>(i + 1);
+        QRect handleRect = getHandleRect(handle);
+        handleRect.setSize(QSize(dynamicHandleSize, dynamicHandleSize));
+        handleRect.moveCenter(getHandleRect(handle).center());
+        if (handleRect.contains(pos)) {
+            activeHandle = handle;
+            isAdjustingHandle = true;
+            isAdjustingFromEditMode = true;
+            dragStartPos = event->globalPosition().toPoint();
+            toolBar->hide();
+            qDebug() << "EditWindow: Handle pressed:" << activeHandle << "at:" << pos;
+            emit handleDragged(activeHandle, dragStartPos);
+            hitHandle = true;
+            break;
+        }
+    }
+}
+
+void EditWindow::startWindowDragging(const QPoint &globalPos)
+{
+    if (isDragMode && !isAdjustingHandle) {
+        dragStartPos = globalPos;
+        isDraggingSelection = true;
+        toolBar->hide();
+        qDebug() << "EditWindow: Start dragging selection at:" << dragStartPos;
+    }
+}
+
+
+
+void EditWindow::startDrawingShape(const QPoint &pos)
+{
+    startPoint = pos;
+    isDrawing = true;
+    qDebug() << "EditWindow: Start drawing at:" << pos << ", mode:" << mode;
+
+    if (mode == 2) { // 文本
+        QString text = QInputDialog::getMultiLineText(this, "输入文本", "请输入文本:");
+        if (!text.isEmpty()) {
+            Shape shape;
+            shape.type = Text;
+            QFont font("Arial", fontSize);
+            QRect textRect = QFontMetrics(font).boundingRect(QRect(0, 0, width() - pos.x(), height() - pos.y()), Qt::AlignLeft | Qt::TextWordWrap, text);
+            shape.rect = QRect(pos, textRect.size());
+            shape.text = text;
+            shape.color = textColor;
+            shape.width = fontSize;
+            shapes.append(shape);
+            updateCanvas();
+            update();
+            isDrawing = false;
+        }
+    } else if (mode == 5) { // 序号笔记
+        QString text = QInputDialog::getMultiLineText(this, "输入序号笔记", "请输入笔记内容:");
+        if (!text.isEmpty()) {
+            Shape shape;
+            shape.type = NumberedNote;
+            QFont font("Arial", fontSize);
+            QString numberedText = QString("%1. %2").arg(noteNumber).arg(text);
+            shape.rect = QRect(pos, QSize(32, 32));
+            shape.text = numberedText;
+            shape.color = textColor;
+            shape.width = fontSize;
+            shape.number = noteNumber;
+            shape.bubbleColor = QColor(200, 200, 200, 128);
+            shape.bubbleBorderColor = Qt::black;
+
+            QFontMetrics fm(font);
+            QString contentText = text;
+            int textWidth = fm.horizontalAdvance(contentText) + 20;
+            int textHeight = fm.height() * (contentText.count('\n') + 1) + 10;
+            int bubbleX = pos.x() + 34 + 5;
+            int bubbleY = pos.y() - (textHeight - 32) / 2;
+            shape.bubbleRect = QRect(bubbleX, bubbleY, textWidth, textHeight);
+
+            shapes.append(shape);
+            noteNumber++;
+            updateCanvas();
+            update();
+            isDrawing = false;
+        }
+    } else if (mode == 3 || mode == 4) { // 画笔或遮罩
+        Shape shape;
+        shape.type = (mode == 3) ? Pen : Mask;
+        shape.points.append(pos);
+        shape.color = (mode == 3) ? penColor : Qt::gray;
+        shape.width = (mode == 3) ? penWidth : mosaicSize;
+        shapes.append(shape);
+        updateCanvas();
+        update();
+    } else if (mode == 6) { // 箭头
+        Shape shape;
+        shape.type = Arrow;
+        shape.points.append(pos);
+        shape.color = shapeBorderColor;
+        shape.width = shapeBorderWidth;
+        shapes.append(shape);
+        qDebug() << "EditWindow: Arrow shape created at:" << pos;
+    }
+}
+
+
+void EditWindow::handleWindowDragging(QMouseEvent *event)
+{
+    QPoint globalOffset = event->globalPosition().toPoint() - dragStartPos;
+    QPoint newPos = this->pos() + globalOffset;
+
+    QRect screenRect = screen()->geometry();
+    int maxX = screenRect.width() - width();
+    int maxY = screenRect.height() - height();
+    newPos.setX(qBound(0, newPos.x(), maxX));
+    newPos.setY(qBound(0, newPos.y(), maxY));
+
+    MainWindow *mainWindow = qobject_cast<MainWindow*>(parent());
+    if (mainWindow) {
+        QSize originalSize = size();
+        QPixmap newScreenshot = mainWindow->updateSelectionPosition(newPos);
+        updateScreenshot(newScreenshot, newPos);
+        setFixedSize(originalSize);
+    }
+
+    dragStartPos = event->globalPosition().toPoint();
+    qDebug() << "EditWindow: Dragging selection to:" << newPos << ", size:" << size();
+}
+
+
+void EditWindow::handleShapeDragging(const QPoint &pos)
+{
+    QPoint offset = pos - dragStartPos;
+    if (selectedShape->type == Arrow && selectedShape->points.size() == 2) {
+        if (selectedShape->offset == QPoint(0, 0)) {
+            selectedShape->points[0] = pos;
+        } else if (selectedShape->offset == QPoint(1, 1)) {
+            selectedShape->points[1] = pos;
+        } else {
+            QPoint oldStart = selectedShape->points[0];
+            QPoint oldEnd = selectedShape->points[1];
+            selectedShape->points[0] = oldStart + offset;
+            selectedShape->points[1] = oldEnd + offset;
+            selectedShape->points[0].setX(qBound(0, selectedShape->points[0].x(), width()));
+            selectedShape->points[0].setY(qBound(0, selectedShape->points[0].y(), height()));
+            selectedShape->points[1].setX(qBound(0, selectedShape->points[1].x(), width()));
+            selectedShape->points[1].setY(qBound(0, selectedShape->points[1].y(), height()));
+        }
+        drawingLayer.fill(Qt::transparent);
+        updateCanvas();
+        update();
+        dragStartPos = pos;
+        qDebug() << "EditWindow: Dragging arrow, start:" << selectedShape->points[0] << ", end:" << selectedShape->points[1];
+    } else if (selectedShape->type == NumberedNote && !selectedShape->bubbleRect.isNull()) {
+        QPoint bubbleOffset = selectedShape->bubbleRect.topLeft() - selectedShape->rect.topLeft();
+        int rectWidth = selectedShape->rect.width();
+        int rectHeight = selectedShape->rect.height();
+        QRect combinedRect = selectedShape->rect | selectedShape->bubbleRect;
+        int combinedWidth = combinedRect.width();
+        int combinedHeight = combinedRect.height();
+
+        QPoint newRectTopLeft = selectedShape->rect.topLeft() + offset;
+        newRectTopLeft.setX(qBound(borderWidth, newRectTopLeft.x(), width() - combinedWidth - borderWidth - 1));
+        newRectTopLeft.setY(qBound(borderWidth, newRectTopLeft.y(), height() - combinedHeight - borderWidth - 1));
+
+        selectedShape->rect.moveTo(newRectTopLeft);
+        selectedShape->bubbleRect.moveTo(newRectTopLeft + bubbleOffset);
+
+        updateCanvas();
+        update();
+        dragStartPos = pos;
+        qDebug() << "EditWindow: Dragging NumberedNote, rect:" << selectedShape->rect << ", bubbleRect:" << selectedShape->bubbleRect;
+    } else if (selectedShape->type == Rectangle || selectedShape->type == Ellipse) {
+        int rectWidth = selectedShape->rect.width();
+        int rectHeight = selectedShape->rect.height();
+        QPoint newRectTopLeft = selectedShape->rect.topLeft() + offset;
+        newRectTopLeft.setX(qBound(borderWidth, newRectTopLeft.x(), width() - rectWidth - borderWidth - 1));
+        newRectTopLeft.setY(qBound(borderWidth, newRectTopLeft.y(), height() - rectHeight - borderWidth - 1));
+        selectedShape->rect.moveTo(newRectTopLeft);
+        updateCanvas();
+        update();
+        dragStartPos = pos;
+    } else {
+        int rectWidth = selectedShape->rect.width();
+        int rectHeight = selectedShape->rect.height();
+        int borderAdjustment = (selectedShape->type == Rectangle || selectedShape->type == Ellipse) ? shapeBorderWidth : 0;
+        int halfBorder = borderAdjustment / 2;
+        QPoint newRectTopLeft = selectedShape->rect.topLeft() + offset;
+        newRectTopLeft.setX(qBound(halfBorder, newRectTopLeft.x(), width() - rectWidth - halfBorder));
+        newRectTopLeft.setY(qBound(halfBorder, newRectTopLeft.y(), height() - rectHeight - halfBorder));
+        selectedShape->rect.moveTo(newRectTopLeft);
+        updateCanvas();
+        update();
+        dragStartPos = pos;
+    }
+    qDebug() << "EditWindow: Moving shape with offset:" << offset << ", new rect pos:" << selectedShape->rect.topLeft();
+}
+
+void EditWindow::drawTemporaryPreview(const QPoint &pos, QPainter &painter)
+{
+    if (mode == 0 || mode == 1) {
+        QPoint endPoint = pos;
+        endPoint.setX(qBound(borderWidth, endPoint.x(), width() - borderWidth));
+        endPoint.setY(qBound(borderWidth, endPoint.y(), height() - borderWidth));
+
+        int left = qMin(startPoint.x(), endPoint.x());
+        int top = qMin(startPoint.y(), endPoint.y());
+        int right = qMax(startPoint.x(), endPoint.x());
+        int bottom = qMax(startPoint.y(), endPoint.y());
+
+        left = qMax(borderWidth, left);
+        top = qMax(borderWidth, top);
+        right = qMin(right, width() - borderWidth - 1);
+        bottom = qMin(bottom, height() - borderWidth - 1);
+
+        currentRect.setCoords(left, top, right, bottom);
+
+        painter.setPen(QPen(shapeBorderColor, shapeBorderWidth));
+        painter.setBrush(Qt::NoBrush);
+        if (mode == 0) {
+            painter.drawRect(currentRect);
+        } else if (mode == 1) {
+            if (QApplication::keyboardModifiers() & Qt::ShiftModifier) {
+                int size = qMin(currentRect.width(), currentRect.height());
+                if (endPoint.x() < startPoint.x()) {
+                    currentRect.setLeft(currentRect.right() - size);
+                } else {
+                    currentRect.setRight(currentRect.left() + size);
+                }
+                if (endPoint.y() < startPoint.y()) {
+                    currentRect.setTop(currentRect.bottom() - size);
+                } else {
+                    currentRect.setBottom(currentRect.top() + size);
+                }
+                if (currentRect.right() > width() - borderWidth - 1) {
+                    currentRect.setRight(width() - borderWidth - 1);
+                    currentRect.setLeft(currentRect.right() - size);
+                }
+                if (currentRect.bottom() > height() - borderWidth - 1) {
+                    currentRect.setBottom(height() - borderWidth - 1);
+                    currentRect.setTop(currentRect.bottom() - size);
+                }
+            }
+            painter.drawEllipse(currentRect);
+        }
+        update();
+    } else if ((mode == 3 || mode == 4 || mode == 6) && isDrawing) {
+        Shape *currentShape = nullptr;
+        if (mode == 3 || mode == 4) {
+            if (!shapes.isEmpty() && (shapes.last().type == Pen || shapes.last().type == Mask)) {
+                currentShape = &shapes.last();
+            }
+        } else if (mode == 6) {
+            if (!shapes.isEmpty() && shapes.last().type == Arrow) {
+                currentShape = &shapes.last();
+                if (currentShape->points.size() == 1) {
+                    currentShape->points.append(pos);
+                } else if (currentShape->points.size() == 2) {
+                    currentShape->points[1] = pos;
+                }
+            }
+        }
+
+        if (currentShape) {
+            if (mode == 3 || mode == 4) {
+                if (QApplication::keyboardModifiers() & Qt::ShiftModifier && mode == 3) {
+                    QPoint delta = pos - startPoint;
+                    QPoint adjustedEnd;
+                    if (qAbs(delta.x()) > qAbs(delta.y())) {
+                        adjustedEnd = QPoint(pos.x(), startPoint.y());
+                    } else {
+                        adjustedEnd = QPoint(startPoint.x(), pos.y());
+                    }
+                    if (currentShape->points.size() > 1) {
+                        currentShape->points[1] = adjustedEnd;
+                    } else {
+                        currentShape->points.append(adjustedEnd);
+                    }
+                } else {
+                    currentShape->points.append(pos);
+                }
+            }
+
+            painter.setPen(QPen(currentShape->color, currentShape->width, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+            painter.setBrush(Qt::NoBrush);
+            if (mode == 3 || mode == 4) {
+                for (int i = 1; i < currentShape->points.size(); ++i) {
+                    painter.drawLine(currentShape->points[i - 1], currentShape->points[i]);
+                }
+            } else if (mode == 6) {
+                if (currentShape->points.size() == 2) {
+                    QPoint start = currentShape->points[0];
+                    QPoint end = currentShape->points[1];
+                    painter.drawLine(start, end);
+                    double angle = atan2(end.y() - start.y(), end.x() - start.x());
+                    int arrowSize = currentShape->width * 3;
+                    QPointF arrowP1 = end - QPointF(cos(angle + M_PI / 6) * arrowSize, sin(angle + M_PI / 6) * arrowSize);
+                    QPointF arrowP2 = end - QPointF(cos(angle - M_PI / 6) * arrowSize, sin(angle - M_PI / 6) * arrowSize);
+                    painter.drawLine(end, arrowP1);
+                    painter.drawLine(end, arrowP2);
+                }
+            }
+            update();
+        }
+    }
+}
+
+
+
+
+void EditWindow::updateCursorStyle(const QPoint &pos)
+{
+    QCursor cursor;
+    Shape *hoveredShape = hitTest(pos);
+    int hitBorderWidth = 10;
+    if (hoveredShape) {
+        if (hoveredShape->type == Arrow && hoveredShape->points.size() == 2) {
+            QRect startRect(hoveredShape->points[0] - QPoint(hitBorderWidth, hitBorderWidth), QSize(hitBorderWidth * 2, hitBorderWidth * 2));
+            QRect endRect(hoveredShape->points[1] - QPoint(hitBorderWidth, hitBorderWidth), QSize(hitBorderWidth * 2, hitBorderWidth * 2));
+            if (startRect.contains(pos) || endRect.contains(pos)) {
+                cursor = Qt::CrossCursor;
+            } else {
+                cursor = Qt::SizeAllCursor;
+            }
+        } else {
+            cursor = Qt::SizeAllCursor;
+        }
+    } else if (mode == 0 || mode == 1 || mode == 3 || mode == 6) {
+        cursor = Qt::ArrowCursor;
+    } else if (mode == -1 && isDragMode) {
+        cursor = Qt::OpenHandCursor;
+        int dynamicHandleSize = calculateHandleSize();
+        for (int i = 0; i < 8; ++i) {
+            Handle handle = static_cast<Handle>(i + 1);
+            QRect handleRect = getHandleRect(handle);
+            handleRect.setSize(QSize(dynamicHandleSize, dynamicHandleSize));
+            handleRect.moveCenter(getHandleRect(handle).center());
+            if (handleRect.contains(pos)) {
+                switch (handle) {
+                case TopLeft:
+                case BottomRight:
+                    cursor = Qt::SizeFDiagCursor;
+                    break;
+                case TopRight:
+                case BottomLeft:
+                    cursor = Qt::SizeBDiagCursor;
+                    break;
+                case Top:
+                case Bottom:
+                    cursor = Qt::SizeVerCursor;
+                    break;
+                case Left:
+                case Right:
+                    cursor = Qt::SizeHorCursor;
+                    break;
+                default:
+                    break;
+                }
+                break;
+            }
+        }
+    } else if (mode == 4) {
+        QPixmap cursorPixmap(mosaicSize, mosaicSize);
+        cursorPixmap.fill(Qt::transparent);
+        QPainter cursorPainter(&cursorPixmap);
+        cursorPainter.setRenderHint(QPainter::Antialiasing);
+        cursorPainter.setBrush(Qt::gray);
+        cursorPainter.setPen(Qt::NoPen);
+        cursorPainter.drawEllipse(0, 0, mosaicSize, mosaicSize);
+        cursor = QCursor(cursorPixmap);
+    } else {
+        cursor = Qt::ArrowCursor;
+    }
+    setCursor(cursor);
+}
+
+
+void EditWindow::stopWindowDragging()
+{
+    isDraggingSelection = false;
+    toolBar->show();
+    toolBar->adjustPosition();
+    qDebug() << "EditWindow: Stop dragging selection, toolbar shown and repositioned";
+}
+
+void EditWindow::stopHandleAdjustment()
+{
+    emit handleReleased();
+    activeHandle = None;
+    isAdjustingHandle = false;
+    isAdjustingFromEditMode = false;
+    isDrawing = false;
+    isDragging = false;
+    MainWindow *mainWindow = qobject_cast<MainWindow*>(parent());
+    if (mainWindow) {
+        mainWindow->resetSelectionState();
+    }
+    toolBar->show();
+    qDebug() << "EditWindow: Handle released, all states reset";
+    update();
+}
+
+void EditWindow::stopShapeDragging()
+{
+    isDragging = false;
+    selectedShape = nullptr;
+    updateCanvas();
+    update();
+    qDebug() << "EditWindow: Shape dragging stopped";
+}
+
+void EditWindow::finishDrawingShape(const QPoint &pos)
+{
+    if ((mode == 0 || mode == 1) && isDrawing) {
+        if (startPoint != pos) {
+            Shape shape;
+            shape.type = (mode == 0) ? Rectangle : Ellipse;
+
+            int left = qMin(startPoint.x(), pos.x());
+            int top = qMin(startPoint.y(), pos.y());
+            int right = qMax(startPoint.x(), pos.x());
+            int bottom = qMax(startPoint.y(), pos.y());
+
+            left = qMax(borderWidth, left);
+            top = qMax(borderWidth, top);
+            right = qMin(right, width() - borderWidth - 1);
+            bottom = qMin(bottom, height() - borderWidth - 1);
+
+            shape.rect.setCoords(left, top, right, bottom);
+
+            if (mode == 1 && (QApplication::keyboardModifiers() & Qt::ShiftModifier)) {
+                int size = qMin(shape.rect.width(), shape.rect.height());
+                if (pos.x() < startPoint.x()) {
+                    shape.rect.setLeft(shape.rect.right() - size);
+                } else {
+                    shape.rect.setRight(shape.rect.left() + size);
+                }
+                if (pos.y() < startPoint.y()) {
+                    shape.rect.setTop(shape.rect.bottom() - size);
+                } else {
+                    shape.rect.setBottom(shape.rect.top() + size);
+                }
+                if (shape.rect.right() > width() - borderWidth - 1) {
+                    shape.rect.setRight(width() - borderWidth - 1);
+                    shape.rect.setLeft(shape.rect.right() - size);
+                }
+                if (shape.rect.bottom() > height() - borderWidth - 1) {
+                    shape.rect.setBottom(height() - borderWidth - 1);
+                    shape.rect.setTop(shape.rect.bottom() - size);
+                }
+            }
+
+            shape.width = shapeBorderWidth;
+            shape.color = shapeBorderColor;
+            shapes.append(shape);
+        }
+        tempLayer.fill(Qt::transparent);
+        updateCanvas();
+        update();
+        isDrawing = false;
+    } else if (mode == 3 || mode == 4 || mode == 6) {
+        tempLayer.fill(Qt::transparent);
+        updateCanvas();
+        update();
+        isDrawing = false;
+        qDebug() << "EditWindow: Mode 3/4/6 completed, mode:" << mode << ", isDrawing:" << isDrawing;
+    }
 }

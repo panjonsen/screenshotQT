@@ -80,6 +80,20 @@ private:
     bool isOnEllipseBorder(const QRect &rect, const QPoint &pos, int borderWidth);
     int calculateHandleSize() const;
     void updateSizeDisplayPosition();
+
+    // 新增的私有函数
+    void startShapeDragging(const QPoint &pos);
+    void startHandleAdjustment(const QPoint &pos, QMouseEvent *event);
+    void startWindowDragging(const QPoint &globalPos);
+    void startDrawingShape(const QPoint &pos);
+    void handleWindowDragging(QMouseEvent *event);
+    void handleShapeDragging(const QPoint &pos);
+    void drawTemporaryPreview(const QPoint &pos, QPainter &painter);
+    void updateCursorStyle(const QPoint &pos);
+    void stopWindowDragging();
+    void stopHandleAdjustment();
+    void stopShapeDragging();
+    void finishDrawingShape(const QPoint &pos);
 };
 
 #endif // EDITWINDOW_H
