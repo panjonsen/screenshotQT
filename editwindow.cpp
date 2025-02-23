@@ -183,7 +183,6 @@ void EditWindow::paintEvent(QPaintEvent *event)
 
 
 
-
 void EditWindow::mousePressEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton) {
@@ -206,10 +205,14 @@ void EditWindow::mousePressEvent(QMouseEvent *event)
             activeHandle == None && mainWindow && !mainWindow->isAdjustingSelectionState()) {
             startDrawingShape(pos);
         }
+    } else if (event->button() == Qt::RightButton) {
+        MainWindow *mainWindow = qobject_cast<MainWindow*>(parent());
+        if (mainWindow) {
+            mainWindow->cancelEditing();
+            qDebug() << "EditWindow: Right-click detected, returning to initial selection state";
+        }
     }
 }
-
-
 void EditWindow::mouseMoveEvent(QMouseEvent *event)
 {
     QPoint pos = event->pos();

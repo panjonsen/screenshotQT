@@ -49,9 +49,17 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
             update();
             qDebug() << "MainWindow: Mouse pressed at:" << startPoint << ", isSelectingInitial:" << isSelectingInitial;
         }
+    } else if (event->button() == Qt::RightButton) {
+        if (editWindow && editWindow->isVisible()) {
+            cancelEditing();
+        } else {
+            qDebug() << "MainWindow: Right-click detected, no edit window present, exiting program";
+            QCoreApplication::quit();
+        }
     }
     event->ignore();
 }
+
 
 void MainWindow::mouseMoveEvent(QMouseEvent *event)
 {
@@ -376,4 +384,26 @@ bool MainWindow::isSelectingInitialState() const
 bool MainWindow::isAdjustingSelectionState() const
 {
     return isAdjustingSelection;
+}
+
+
+
+void MainWindow::cancelEditing()
+{
+    if (editWindow) {
+        editWindow->hide();
+        editWindow->hideToolBar();
+        delete editWindow; // 清理指针，避免内存泄漏
+        editWindow = nullptr;
+    }
+    isEditing = false;
+    isAdjustingSelection = false;
+    isSelectingInitial = true;
+    activeHandle = None;
+    startPoint = QPoint();
+    endPoint = QPoint();
+    screenshot = originalScreenshot; // 重置截图
+    magnifier->show();
+    update();
+    qDebug() << "MainWindow: Editing canceled, returned to initial selection state";
 }

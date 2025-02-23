@@ -20,6 +20,7 @@ public:
     void resetSelectionState();
     bool isSelectingInitialState() const;
     bool isAdjustingSelectionState() const;
+    void cancelEditing(); // 移动到 public
 
 protected:
     void mousePressEvent(QMouseEvent *event) override;
