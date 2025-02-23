@@ -14,6 +14,8 @@ ScreenshotTool_autogen/timestamp: \
 	F:/CppCode/ScreenshotTool/ScreenshotTool/mainwindow.cpp \
 	F:/CppCode/ScreenshotTool/ScreenshotTool/mainwindow.h \
 	F:/CppCode/ScreenshotTool/ScreenshotTool/shape.h \
+	F:/CppCode/ScreenshotTool/ScreenshotTool/sizedisplaywindow.cpp \
+	F:/CppCode/ScreenshotTool/ScreenshotTool/sizedisplaywindow.h \
 	F:/CppCode/ScreenshotTool/ScreenshotTool/toolbarwindow.cpp \
 	F:/CppCode/ScreenshotTool/ScreenshotTool/toolbarwindow.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtCore/QList \
@@ -179,6 +181,7 @@ ScreenshotTool_autogen/timestamp: \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qpainter.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qpalette.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qpen.h \
+	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qpicture.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qpixelformat.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qpixmap.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qpointingdevice.h \
@@ -188,6 +191,7 @@ ScreenshotTool_autogen/timestamp: \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qrgba64.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qscreen.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qscreen_platform.h \
+	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qtextdocument.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qtextoption.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qtgui-config.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qtguiexports.h \
@@ -199,6 +203,7 @@ ScreenshotTool_autogen/timestamp: \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qwindowdefs.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtGui/qwindowdefs_win.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/QColorDialog \
+	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/QLabel \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/QMainWindow \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/QPushButton \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/QSlider \
@@ -209,6 +214,8 @@ ScreenshotTool_autogen/timestamp: \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/qabstractspinbox.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/qcolordialog.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/qdialog.h \
+	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/qframe.h \
+	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/qlabel.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/qmainwindow.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/qpushbutton.h \
 	F:/IdeInstall/qt/6.8.2/mingw_64/include/QtWidgets/qsizepolicy.h \

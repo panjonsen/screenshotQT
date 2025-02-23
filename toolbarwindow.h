@@ -36,7 +36,7 @@ protected:
 
 private:
     EditWindow *editWindow;
-    QPushButton *rectButton, *circleButton, *textButton, *penButton, *mosaicButton, *numberNoteButton, *dragButton; // 添加 numberNoteButton
+    QPushButton *rectButton, *circleButton, *textButton, *penButton, *mosaicButton, *numberNoteButton, *dragButton, *arrowButton;
     QPushButton *undoButton, *finishButton, *cancelButton;
     QWidget *textSettings, *mosaicSettings, *shapeSettings, *penSettings;
     QSlider *fontSizeSlider;

@@ -10,7 +10,7 @@ ToolBarWindow::ToolBarWindow(EditWindow *editWindow, QWidget *parent)
     : QWidget(parent), editWindow(editWindow)
 {
     setWindowFlags(Qt::Tool | Qt::FramelessWindowHint);
-    setFixedWidth(400);
+    setFixedWidth(420);
     setupUI();
     adjustPosition();
     adjustHeight();
@@ -21,7 +21,6 @@ ToolBarWindow::ToolBarWindow(EditWindow *editWindow, QWidget *parent)
     emit modeChanged(-1);
     emit dragModeChanged(true);
 }
-
 
 void ToolBarWindow::setupUI()
 {
@@ -35,7 +34,7 @@ void ToolBarWindow::setupUI()
                           "background-color: #FFFFFF; "
                           "font-size: 14px; "
                           "padding: 2px; "
-                          "color: #000000; }" // 添加黑色文字
+                          "color: #000000; }"
                           "QPushButton:hover { background-color: #E0E0E0; }"
                           "QPushButton:pressed { background-color: #D0D0D0; }";
 
@@ -54,6 +53,7 @@ void ToolBarWindow::setupUI()
     rectButton = new QPushButton(this);
     rectButton->setFixedSize(30, 30);
     rectButton->setStyleSheet(buttonStyle + "QPushButton { border: 2px solid black; }");
+    rectButton->setToolTip("绘制矩形");
     connect(rectButton, &QPushButton::clicked, [this]() {
         setActiveButton(rectButton);
         emit modeChanged(0);
@@ -64,6 +64,7 @@ void ToolBarWindow::setupUI()
     circleButton = new QPushButton(this);
     circleButton->setFixedSize(30, 30);
     circleButton->setStyleSheet(buttonStyle + "QPushButton { border: 2px solid black; border-radius: 15px; }");
+    circleButton->setToolTip("绘制圆形");
     connect(circleButton, &QPushButton::clicked, [this]() {
         setActiveButton(circleButton);
         emit modeChanged(1);
@@ -74,6 +75,7 @@ void ToolBarWindow::setupUI()
     textButton = new QPushButton("A", this);
     textButton->setFixedSize(30, 30);
     textButton->setStyleSheet(buttonStyle);
+    textButton->setToolTip("添加文本");
     connect(textButton, &QPushButton::clicked, [this]() {
         setActiveButton(textButton);
         emit modeChanged(2);
@@ -87,6 +89,7 @@ void ToolBarWindow::setupUI()
                              "QPushButton { "
                              "font-size: 18px; "
                              "}");
+    penButton->setToolTip("画笔工具");
     connect(penButton, &QPushButton::clicked, [this]() {
         setActiveButton(penButton);
         emit modeChanged(3);
@@ -112,6 +115,7 @@ void ToolBarWindow::setupUI()
     mosaicButton->setIcon(mosaicIcon);
     mosaicButton->setIconSize(QSize(20, 20));
     mosaicButton->setStyleSheet(buttonStyle);
+    mosaicButton->setToolTip("马赛克工具");
     connect(mosaicButton, &QPushButton::clicked, [this]() {
         setActiveButton(mosaicButton);
         emit modeChanged(4);
@@ -127,10 +131,25 @@ void ToolBarWindow::setupUI()
                                     "border-radius: 15px; "
                                     "font-size: 16px; "
                                     "}");
+    numberNoteButton->setToolTip("添加序号笔记");
     connect(numberNoteButton, &QPushButton::clicked, [this]() {
         setActiveButton(numberNoteButton);
         emit modeChanged(5);
         hide(); textSettings->show(); mosaicSettings->hide(); shapeSettings->hide(); penSettings->hide(); show();
+        adjustHeight();
+    });
+
+    arrowButton = new QPushButton("➡", this);
+    arrowButton->setFixedSize(30, 30);
+    arrowButton->setStyleSheet(buttonStyle +
+                               "QPushButton { "
+                               "font-size: 18px; "
+                               "}");
+    arrowButton->setToolTip("绘制箭头");
+    connect(arrowButton, &QPushButton::clicked, [this]() {
+        setActiveButton(arrowButton);
+        emit modeChanged(6);
+        hide(); textSettings->hide(); mosaicSettings->hide(); shapeSettings->show(); penSettings->hide(); show();
         adjustHeight();
     });
 
@@ -140,6 +159,7 @@ void ToolBarWindow::setupUI()
                               "QPushButton { "
                               "font-size: 18px; "
                               "}");
+    dragButton->setToolTip("拖动模式");
     connect(dragButton, &QPushButton::clicked, [this]() {
         setActiveButton(dragButton);
         emit modeChanged(-1);
@@ -148,7 +168,6 @@ void ToolBarWindow::setupUI()
         adjustHeight();
     });
 
-// 根据操作系统选择撤销符号
 #ifdef Q_OS_WIN
     undoButton = new QPushButton("⮌", this); // Windows 使用 U+2B8C
 #else
@@ -157,8 +176,9 @@ void ToolBarWindow::setupUI()
     undoButton->setFixedSize(50, 30);
     undoButton->setStyleSheet(buttonStyle +
                               "QPushButton { "
-                              "font-size: 18px; " // 增大字体以突出撤销符号
+                              "font-size: 18px; "
                               "}");
+    undoButton->setToolTip("撤销上一步");
     connect(undoButton, &QPushButton::clicked, this, &ToolBarWindow::undoRequested);
 
     finishButton = new QPushButton("✅", this);
@@ -167,6 +187,7 @@ void ToolBarWindow::setupUI()
                                 "QPushButton { "
                                 "font-size: 18px; "
                                 "}");
+    finishButton->setToolTip("完成并保存");
     connect(finishButton, &QPushButton::clicked, this, &ToolBarWindow::finishRequested);
 
     cancelButton = new QPushButton("❌", this);
@@ -175,6 +196,7 @@ void ToolBarWindow::setupUI()
                                 "QPushButton { "
                                 "font-size: 18px; "
                                 "}");
+    cancelButton->setToolTip("取消编辑");
     connect(cancelButton, &QPushButton::clicked, this, &ToolBarWindow::cancelRequested);
 
     buttonLayout->addWidget(rectButton);
@@ -183,6 +205,7 @@ void ToolBarWindow::setupUI()
     buttonLayout->addWidget(penButton);
     buttonLayout->addWidget(mosaicButton);
     buttonLayout->addWidget(numberNoteButton);
+    buttonLayout->addWidget(arrowButton);
     buttonLayout->addWidget(dragButton);
     buttonLayout->addWidget(undoButton);
     buttonLayout->addWidget(finishButton);
@@ -289,6 +312,7 @@ void ToolBarWindow::setupUI()
     mainLayout->setContentsMargins(5, 5, 5, 5);
     setLayout(mainLayout);
 }
+
 void ToolBarWindow::setActiveButton(QPushButton *button)
 {
     // 重置所有按钮的样式为默认状态
@@ -310,9 +334,10 @@ void ToolBarWindow::setActiveButton(QPushButton *button)
     numberNoteButton->setStyleSheet(defaultStyle +
                                     "QPushButton { "
                                     "border: 1px solid #A0A0A0; "
-                                    "border-radius: 15px; " // 保持圆角矩形效果
-                                    "font-size: 16px; "    // 保持数字 "1" 的大小
+                                    "border-radius: 15px; "
+                                    "font-size: 16px; "
                                     "}");
+    arrowButton->setStyleSheet(defaultStyle + "QPushButton { font-size: 18px; }");
     dragButton->setStyleSheet(defaultStyle);
     undoButton->setStyleSheet(defaultStyle);
     finishButton->setStyleSheet(defaultStyle);
@@ -323,7 +348,6 @@ void ToolBarWindow::setActiveButton(QPushButton *button)
         button->setStyleSheet(button->styleSheet() + "QPushButton { background-color: #87CEEB; color: #000000; }");
     }
 }
-
 
 void ToolBarWindow::showSettings(QWidget *settingsWidget, QPushButton *button)
 {
@@ -359,7 +383,7 @@ void ToolBarWindow::adjustHeight()
     else if (shapeSettings->isVisible()) settingsHeight = 40;
     else if (penSettings->isVisible()) settingsHeight = 40;
     setFixedHeight(baseHeight + settingsHeight);
-    adjustPosition(); // 每次高度变化后调整位置
+    adjustPosition();
 }
 
 void ToolBarWindow::paintEvent(QPaintEvent *event)

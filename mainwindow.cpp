@@ -11,7 +11,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
     setWindowTitle("截图工具");
-    setWindowFlags(Qt::FramelessWindowHint);
+    setWindowFlags(Qt::FramelessWindowHint | Qt::Tool); // 添加 Qt::Tool
     setMouseTracking(true);
     qDebug() << "MainWindow: Mouse tracking enabled:" << hasMouseTracking();
 
@@ -31,6 +31,7 @@ MainWindow::MainWindow(QWidget *parent)
     isSelectingInitial = true;
     qDebug() << "MainWindow: Initialized with isSelectingInitial:" << isSelectingInitial;
 }
+
 
 MainWindow::~MainWindow()
 {
@@ -102,8 +103,6 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event)
     }
 }
 
-
-
 void MainWindow::mouseReleaseEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton && (isSelectingInitial || isAdjustingSelection)) {
@@ -143,7 +142,7 @@ void MainWindow::mouseReleaseEvent(QMouseEvent *event)
             }
         }
         isSelectingInitial = false;
-        isAdjustingSelection = false; // 确保调整状态结束
+        isAdjustingSelection = false;
         isEditing = true;
         activeHandle = None;
         releaseMouse();
@@ -161,7 +160,7 @@ void MainWindow::mouseReleaseEvent(QMouseEvent *event)
             editWindow->setFocus();
             if (editWindow->getIsAdjustingFromEditMode()) {
                 editWindow->showToolBar();
-                editWindow->setMode(-1); // 强制重置为小手模式
+                editWindow->setMode(-1);
                 qDebug() << "MainWindow: Adjusting from edit mode completed, toolbar shown";
             }
         } else {
@@ -187,8 +186,6 @@ void MainWindow::mouseReleaseEvent(QMouseEvent *event)
         update();
     }
 }
-
-
 
 void MainWindow::paintEvent(QPaintEvent *event)
 {
@@ -315,7 +312,6 @@ void MainWindow::startDragging(Handle handle, const QPoint &globalPos)
 
 QPixmap MainWindow::updateSelectionPosition(const QPoint &newPos)
 {
-    // 使用初始宽度和高度，确保尺寸不变
     startPoint = newPos;
     endPoint = startPoint + QPoint(initialWidth, initialHeight);
 
@@ -343,7 +339,6 @@ QPixmap MainWindow::updateSelectionPosition(const QPoint &newPos)
     return newScreenshot;
 }
 
-
 QRect MainWindow::getSelection() const
 {
     return QRect(startPoint, endPoint).normalized();
@@ -352,12 +347,12 @@ QRect MainWindow::getSelection() const
 void MainWindow::resetSelectionState()
 {
     isSelectingInitial = false;
-    isAdjustingSelection = false; // 确保调整状态彻底清理
+    isAdjustingSelection = false;
     activeHandle = None;
     isEditing = true;
     releaseMouse();
     if (editWindow) {
-        editWindow->setMode(-1); // 同步 EditWindow 模式
+        editWindow->setMode(-1);
         QRect selection(startPoint, endPoint);
         selection = selection.normalized();
         QPixmap newScreenshot = originalScreenshot.copy(selection);
@@ -372,7 +367,6 @@ void MainWindow::resetSelectionState()
              << ", activeHandle:" << activeHandle;
     update();
 }
-
 
 bool MainWindow::isSelectingInitialState() const
 {

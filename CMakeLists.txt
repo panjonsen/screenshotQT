@@ -31,6 +31,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         toolbarwindow.h toolbarwindow.cpp
         shape.h
         editwindow.h editwindow.cpp
+        sizedisplaywindow.h sizedisplaywindow.cpp
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET ScreenshotTool APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR

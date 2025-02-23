@@ -330,6 +330,12 @@
 			null
 		],
 		[
+			"F:/CppCode/ScreenshotTool/ScreenshotTool/sizedisplaywindow.h",
+			"MU",
+			"EWIEGA46WW/moc_sizedisplaywindow.cpp",
+			null
+		],
+		[
 			"F:/CppCode/ScreenshotTool/ScreenshotTool/toolbarwindow.h",
 			"MU",
 			"EWIEGA46WW/moc_toolbarwindow.cpp",
@@ -415,6 +421,11 @@
 		],
 		[ "F:/CppCode/ScreenshotTool/ScreenshotTool/main.cpp", "MU", null ],
 		[ "F:/CppCode/ScreenshotTool/ScreenshotTool/mainwindow.cpp", "MU", null ],
+		[
+			"F:/CppCode/ScreenshotTool/ScreenshotTool/sizedisplaywindow.cpp",
+			"MU",
+			null
+		],
 		[
 			"F:/CppCode/ScreenshotTool/ScreenshotTool/toolbarwindow.cpp",
 			"MU",

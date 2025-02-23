@@ -9,6 +9,7 @@
 #include "shape.h"
 
 class ToolBarWindow;
+class SizeDisplayWindow;
 
 class EditWindow : public QWidget {
     Q_OBJECT
@@ -29,7 +30,9 @@ protected:
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
     void mouseDoubleClickEvent(QMouseEvent *event) override;
-
+    void moveEvent(QMoveEvent *event) override;
+    void showEvent(QShowEvent *event) override;
+    void hideEvent(QHideEvent *event) override;
 
 signals:
     void handleDragged(Handle handle, const QPoint &globalPos);
@@ -53,7 +56,7 @@ private:
     bool isAdjustingHandle = false;
     bool isDrawing = false;
     bool isAdjustingFromEditMode = false;
-    int mode = -1; // -1:无, 0:矩形, 1:圆形, 2:文本, 3:画笔, 4:遮罩, 5:序号笔记
+    int mode = -1; // -1:无, 0:矩形, 1:圆形, 2:文本, 3:画笔, 4:遮罩, 5:序号笔记, 6:箭头
     QList<Shape> shapes;
     Shape *selectedShape = nullptr;
     QPoint startPoint;
@@ -67,6 +70,7 @@ private:
     ToolBarWindow *toolBar;
     QRect currentRect;
     int noteNumber = 1; // 跟踪序号，初始为 1
+    SizeDisplayWindow *sizeDisplayWindow;
 
     QRect getHandleRect(Handle handle) const;
     void drawShape(QPainter &painter, const Shape &shape);
@@ -75,6 +79,7 @@ private:
     bool isOnBorder(const QRect &rect, const QPoint &pos, int borderWidth = 5);
     bool isOnEllipseBorder(const QRect &rect, const QPoint &pos, int borderWidth);
     int calculateHandleSize() const;
+    void updateSizeDisplayPosition();
 };
 
 #endif // EDITWINDOW_H
