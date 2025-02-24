@@ -10,6 +10,7 @@
 
 class ToolBarWindow;
 class SizeDisplayWindow;
+class QShortcut;
 
 class EditWindow : public QWidget {
     Q_OBJECT
@@ -58,6 +59,7 @@ private:
     bool isAdjustingFromEditMode = false;
     int mode = -1; // -1:无, 0:矩形, 1:圆形, 2:文本, 3:画笔, 4:遮罩, 5:序号笔记, 6:箭头
     QList<Shape> shapes;
+    QList<Shape> redoStack; // 新增用于存储撤销的操作
     Shape *selectedShape = nullptr;
     QPoint startPoint;
     int fontSize = 16;
@@ -71,6 +73,8 @@ private:
     QRect currentRect;
     int noteNumber = 1; // 跟踪序号，初始为 1
     SizeDisplayWindow *sizeDisplayWindow;
+    QShortcut *undoShortcut;
+    QShortcut *redoShortcut; // 新增前进快捷键
 
     QRect getHandleRect(Handle handle) const;
     void drawShape(QPainter &painter, const Shape &shape);

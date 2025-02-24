@@ -2,3 +2,5 @@
 #include "EWIEGA46WW/moc_editwindow.cpp"
 #include "EWIEGA46WW/moc_magnifierwindow.cpp"
 #include "EWIEGA46WW/moc_mainwindow.cpp"
+#include "EWIEGA46WW/moc_sizedisplaywindow.cpp"
+#include "EWIEGA46WW/moc_toolbarwindow.cpp"

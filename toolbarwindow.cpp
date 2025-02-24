@@ -10,7 +10,7 @@ ToolBarWindow::ToolBarWindow(EditWindow *editWindow, QWidget *parent)
     : QWidget(parent), editWindow(editWindow)
 {
     setWindowFlags(Qt::Tool | Qt::FramelessWindowHint);
-    setFixedWidth(420);
+    setFixedWidth(470);
     setupUI();
     adjustPosition();
     adjustHeight();
@@ -178,8 +178,25 @@ void ToolBarWindow::setupUI()
                               "QPushButton { "
                               "font-size: 18px; "
                               "}");
-    undoButton->setToolTip("撤销上一步");
+    undoButton->setToolTip("撤销上一步 (Ctrl+Z)");
     connect(undoButton, &QPushButton::clicked, this, &ToolBarWindow::undoRequested);
+
+#ifdef Q_OS_WIN
+    redoButton = new QPushButton("⮎", this); // Windows 使用 U+2B8E
+#else
+    redoButton = new QPushButton("⏩", this); // macOS 使用 U+23E9
+#endif
+    redoButton->setFixedSize(50, 30);
+    redoButton->setStyleSheet(buttonStyle +
+                              "QPushButton { "
+                              "font-size: 18px; "
+                              "}");
+    redoButton->setToolTip("重做 (Ctrl+X)"); // 更新工具提示为 Ctrl+X
+    connect(redoButton, &QPushButton::clicked, this, &ToolBarWindow::redoRequested);
+
+
+
+
 
     finishButton = new QPushButton("✅", this);
     finishButton->setFixedSize(50, 30);
@@ -208,6 +225,7 @@ void ToolBarWindow::setupUI()
     buttonLayout->addWidget(arrowButton);
     buttonLayout->addWidget(dragButton);
     buttonLayout->addWidget(undoButton);
+    buttonLayout->addWidget(redoButton); // 添加 redoButton
     buttonLayout->addWidget(finishButton);
     buttonLayout->addWidget(cancelButton);
     buttonLayout->addStretch();

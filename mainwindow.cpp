@@ -11,7 +11,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
     setWindowTitle("截图工具");
-    setWindowFlags(Qt::FramelessWindowHint | Qt::Tool); // 添加 Qt::Tool
+    setWindowFlags(Qt::FramelessWindowHint | Qt::Tool);
     setMouseTracking(true);
     qDebug() << "MainWindow: Mouse tracking enabled:" << hasMouseTracking();
 
@@ -20,7 +20,8 @@ MainWindow::MainWindow(QWidget *parent)
         originalScreenshot = screen->grabWindow(0);
         screenshot = originalScreenshot;
         setGeometry(screen->geometry());
-        setFixedSize(screen->geometry().size());
+        // 不再使用 setFixedSize，而是使用全屏模式
+        showFullScreen();
     }
 
     magnifier = new MagnifierWindow(originalScreenshot, this);
@@ -31,7 +32,6 @@ MainWindow::MainWindow(QWidget *parent)
     isSelectingInitial = true;
     qDebug() << "MainWindow: Initialized with isSelectingInitial:" << isSelectingInitial;
 }
-
 
 MainWindow::~MainWindow()
 {

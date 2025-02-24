@@ -21,6 +21,7 @@ signals:
     void modeChanged(int mode);
     void dragModeChanged(bool enabled);
     void undoRequested();
+    void redoRequested(); // 新增前进信号
     void finishRequested();
     void cancelRequested();
     void textFontSizeChanged(int size);
@@ -37,7 +38,7 @@ protected:
 private:
     EditWindow *editWindow;
     QPushButton *rectButton, *circleButton, *textButton, *penButton, *mosaicButton, *numberNoteButton, *dragButton, *arrowButton;
-    QPushButton *undoButton, *finishButton, *cancelButton;
+    QPushButton *undoButton, *redoButton, *finishButton, *cancelButton; // 新增 redoButton
     QWidget *textSettings, *mosaicSettings, *shapeSettings, *penSettings;
     QSlider *fontSizeSlider;
     QPushButton *colorBlock;

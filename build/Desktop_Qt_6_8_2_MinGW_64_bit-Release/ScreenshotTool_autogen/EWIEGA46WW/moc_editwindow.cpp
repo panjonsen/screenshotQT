@@ -43,7 +43,9 @@ static constexpr auto qt_meta_stringdata_ZN10EditWindowE = QtMocHelpers::stringD
     "Handle",
     "handle",
     "globalPos",
-    "handleReleased"
+    "handleReleased",
+    "finished",
+    "pixmap"
 );
 #else  // !QT_MOC_HAS_STRINGDATA
 #error "qtmochelpers.h not found or too old."
@@ -55,20 +57,22 @@ Q_CONSTINIT static const uint qt_meta_data_ZN10EditWindowE[] = {
       12,       // revision
        0,       // classname
        0,    0, // classinfo
-       2,   14, // methods
+       3,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
        0,       // flags
-       2,       // signalCount
+       3,       // signalCount
 
  // signals: name, argc, parameters, tag, flags, initial metatype offsets
-       1,    2,   26,    2, 0x06,    1 /* Public */,
-       6,    0,   31,    2, 0x06,    4 /* Public */,
+       1,    2,   32,    2, 0x06,    1 /* Public */,
+       6,    0,   37,    2, 0x06,    4 /* Public */,
+       7,    1,   38,    2, 0x06,    5 /* Public */,
 
  // signals: parameters
     QMetaType::Void, 0x80000000 | 3, QMetaType::QPoint,    4,    5,
     QMetaType::Void,
+    QMetaType::Void, QMetaType::QPixmap,    8,
 
        0        // eod
 };
@@ -87,7 +91,10 @@ Q_CONSTINIT const QMetaObject EditWindow::staticMetaObject = { {
         QtPrivate::TypeAndForceComplete<Handle, std::false_type>,
         QtPrivate::TypeAndForceComplete<const QPoint &, std::false_type>,
         // method 'handleReleased'
-        QtPrivate::TypeAndForceComplete<void, std::false_type>
+        QtPrivate::TypeAndForceComplete<void, std::false_type>,
+        // method 'finished'
+        QtPrivate::TypeAndForceComplete<void, std::false_type>,
+        QtPrivate::TypeAndForceComplete<const QPixmap &, std::false_type>
     >,
     nullptr
 } };
@@ -99,6 +106,7 @@ void EditWindow::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, 
         switch (_id) {
         case 0: _t->handleDragged((*reinterpret_cast< std::add_pointer_t<Handle>>(_a[1])),(*reinterpret_cast< std::add_pointer_t<QPoint>>(_a[2]))); break;
         case 1: _t->handleReleased(); break;
+        case 2: _t->finished((*reinterpret_cast< std::add_pointer_t<QPixmap>>(_a[1]))); break;
         default: ;
         }
     }
@@ -115,6 +123,13 @@ void EditWindow::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, 
             using _q_method_type = void (EditWindow::*)();
             if (_q_method_type _q_method = &EditWindow::handleReleased; *reinterpret_cast<_q_method_type *>(_a[1]) == _q_method) {
                 *result = 1;
+                return;
+            }
+        }
+        {
+            using _q_method_type = void (EditWindow::*)(const QPixmap & );
+            if (_q_method_type _q_method = &EditWindow::finished; *reinterpret_cast<_q_method_type *>(_a[1]) == _q_method) {
+                *result = 2;
                 return;
             }
         }
@@ -140,14 +155,14 @@ int EditWindow::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 2)
+        if (_id < 3)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 2;
+        _id -= 3;
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 2)
+        if (_id < 3)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
-        _id -= 2;
+        _id -= 3;
     }
     return _id;
 }
@@ -163,5 +178,12 @@ void EditWindow::handleDragged(Handle _t1, const QPoint & _t2)
 void EditWindow::handleReleased()
 {
     QMetaObject::activate(this, &staticMetaObject, 1, nullptr);
+}
+
+// SIGNAL 2
+void EditWindow::finished(const QPixmap & _t1)
+{
+    void *_a[] = { nullptr, const_cast<void*>(reinterpret_cast<const void*>(std::addressof(_t1))) };
+    QMetaObject::activate(this, &staticMetaObject, 2, _a);
 }
 QT_WARNING_POP

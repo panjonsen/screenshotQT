@@ -12,7 +12,7 @@
 #include <QTimer>
 #include <QThread>
 #include <QPainterPath>
-
+#include <QShortcut> // 新增头文件
 
 EditWindow::EditWindow(const QPixmap &screenshot, const QPoint &pos, QWidget *parent)
     : QWidget(parent), screenshot(screenshot), canvas(screenshot), drawingLayer(screenshot.size()), tempLayer(screenshot.size())
@@ -42,6 +42,28 @@ EditWindow::EditWindow(const QPixmap &screenshot, const QPoint &pos, QWidget *pa
     borderStyle = Qt::DashLine;   // 虚线样式
 
 
+    // Undo 快捷键 Ctrl+Z
+    undoShortcut = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_Z), this);
+    connect(undoShortcut, &QShortcut::activated, this, [this]() {
+        if (!shapes.isEmpty()) {
+            redoStack.append(shapes.takeLast()); // 将撤销的形状移到 redoStack
+            updateCanvas();
+            update();
+            qDebug() << "EditWindow: Undo triggered via Ctrl+Z, redoStack size:" << redoStack.size();
+        }
+    });
+
+    // Redo 快捷键改为 Ctrl+X
+    redoShortcut = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_X), this);
+    connect(redoShortcut, &QShortcut::activated, this, [this]() {
+        if (!redoStack.isEmpty()) {
+            shapes.append(redoStack.takeLast());
+            updateCanvas();
+            update();
+            qDebug() << "EditWindow: Redo triggered via Ctrl+X, redoStack size:" << redoStack.size();
+        }
+    });
+
     connect(toolBar, &ToolBarWindow::modeChanged, this, [this](int m) {
         setMode(m);
     });
@@ -49,11 +71,23 @@ EditWindow::EditWindow(const QPixmap &screenshot, const QPoint &pos, QWidget *pa
         isDragMode = enabled;
         qDebug() << "EditWindow: Drag mode:" << isDragMode;
     });
+
+
     connect(toolBar, &ToolBarWindow::undoRequested, this, [this]() {
         if (!shapes.isEmpty()) {
-            shapes.removeLast();
+            redoStack.append(shapes.takeLast()); // 与 Ctrl+Z 一致
             updateCanvas();
             update();
+            qDebug() << "EditWindow: Undo triggered via button, redoStack size:" << redoStack.size();
+        }
+    });
+    // 新增 redoRequested 的连接
+    connect(toolBar, &ToolBarWindow::redoRequested, this, [this]() {
+        if (!redoStack.isEmpty()) {
+            shapes.append(redoStack.takeLast()); // 与 Ctrl+Y 一致
+            updateCanvas();
+            update();
+            qDebug() << "EditWindow: Redo triggered via button, redoStack size:" << redoStack.size();
         }
     });
 
@@ -125,6 +159,8 @@ EditWindow::~EditWindow()
 {
     delete toolBar;
     delete sizeDisplayWindow;
+    delete undoShortcut; // 清理快捷键对象
+    delete redoShortcut; // 清理 redoShortcut
 }
 
 void EditWindow::updateScreenshot(const QPixmap &newScreenshot, const QPoint &newPos)
@@ -607,7 +643,6 @@ void EditWindow::startWindowDragging(const QPoint &globalPos)
 }
 
 
-
 void EditWindow::startDrawingShape(const QPoint &pos)
 {
     startPoint = pos;
@@ -626,6 +661,7 @@ void EditWindow::startDrawingShape(const QPoint &pos)
             shape.color = textColor;
             shape.width = fontSize;
             shapes.append(shape);
+            redoStack.clear(); // 新操作清空 redoStack
             updateCanvas();
             update();
             isDrawing = false;
@@ -654,6 +690,7 @@ void EditWindow::startDrawingShape(const QPoint &pos)
             shape.bubbleRect = QRect(bubbleX, bubbleY, textWidth, textHeight);
 
             shapes.append(shape);
+            redoStack.clear(); // 新操作清空 redoStack
             noteNumber++;
             updateCanvas();
             update();
@@ -662,12 +699,12 @@ void EditWindow::startDrawingShape(const QPoint &pos)
     } else if (mode == 3 || mode == 4) { // 画笔或遮罩
         Shape shape;
         shape.type = (mode == 3) ? Pen : Mask;
-        // 限制初始点在边界内
         QPoint boundedPos(qBound(0, pos.x(), width() - 1), qBound(0, pos.y(), height() - 1));
         shape.points.append(boundedPos);
         shape.color = (mode == 3) ? penColor : Qt::gray;
         shape.width = (mode == 3) ? penWidth : mosaicSize;
         shapes.append(shape);
+        redoStack.clear(); // 新操作清空 redoStack
         updateCanvas();
         update();
     } else if (mode == 6) { // 箭头
@@ -677,9 +714,13 @@ void EditWindow::startDrawingShape(const QPoint &pos)
         shape.color = shapeBorderColor;
         shape.width = shapeBorderWidth;
         shapes.append(shape);
+        redoStack.clear(); // 新操作清空 redoStack
         qDebug() << "EditWindow: Arrow shape created at:" << pos;
     }
 }
+
+
+
 void EditWindow::handleWindowDragging(QMouseEvent *event)
 {
     QPoint globalOffset = event->globalPosition().toPoint() - dragStartPos;
@@ -989,6 +1030,8 @@ void EditWindow::stopShapeDragging()
     qDebug() << "EditWindow: Shape dragging stopped";
 }
 
+
+
 void EditWindow::finishDrawingShape(const QPoint &pos)
 {
     if ((mode == 0 || mode == 1) && isDrawing) {
@@ -1033,13 +1076,13 @@ void EditWindow::finishDrawingShape(const QPoint &pos)
             shape.width = shapeBorderWidth;
             shape.color = shapeBorderColor;
             shapes.append(shape);
+            redoStack.clear(); // 新操作清空 redoStack
         }
         tempLayer.fill(Qt::transparent);
         updateCanvas();
         update();
         isDrawing = false;
     } else if (mode == 3 || mode == 4 || mode == 6) {
-        // 确保最后的点在边界内
         QPoint boundedPos(qBound(0, pos.x(), width() - 1), qBound(0, pos.y(), height() - 1));
         if (mode == 3 || mode == 4) {
             if (!shapes.isEmpty() && (shapes.last().type == Pen || shapes.last().type == Mask)) {
@@ -1053,3 +1096,9 @@ void EditWindow::finishDrawingShape(const QPoint &pos)
         qDebug() << "EditWindow: Mode 3/4/6 completed, mode:" << mode << ", isDrawing:" << isDrawing;
     }
 }
+
+
+
+
+
+
